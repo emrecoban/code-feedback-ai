@@ -19,7 +19,32 @@
         "command": "code-feedback-ai.helloWorld",
         "title": "Hello World"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "AI Code Feedback",
+      "properties": {
+        "codeFeedback.ai.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable AI-powered code analysis"
+        },
+        "codeFeedback.openai.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "OpenAI API key for AI analysis (keep this secure!)"
+        },
+        "codeFeedback.openai.model": {
+          "type": "string",
+          "default": "gpt-3.5-turbo",
+          "enum": [
+            "gpt-3.5-turbo",
+            "gpt-4",
+            "gpt-4-turbo-preview"
+          ],
+          "description": "OpenAI model to use for analysis"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "pnpm run compile",
