@@ -1,60 +1,60 @@
 import * as vscode from "vscode";
 
-// Dil sistemi için translation interface'i
+// Dil sistemi için translation interface'i - İngilizce key'ler ile
 interface Translations {
-  cursorAnalysis: {
+  cursor_analysis: {
     function: string;
     conditional: string;
     loop: string;
     comment: string;
-    longLine: string;
-    emptyLine: string;
+    long_line: string;
+    empty_line: string;
     generic: string;
   };
-  newlineMessages: {
+  newline_messages: {
     single: string;
     multiple: string;
   };
   errors: {
-    apiKeyRequired: string;
-    invalidApiKey: string;
-    rateLimitReached: string;
-    quotaExceeded: string;
-    connectionIssue: string;
-    serviceUnavailable: string;
-    aiUnavailable: string;
-    tooManyErrors: string;
-    apiKeyConfigurationNeeded: string;
+    api_key_required: string;
+    invalid_api_key: string;
+    rate_limit_reached: string;
+    quota_exceeded: string;
+    connection_issue: string;
+    service_unavailable: string;
+    ai_unavailable: string;
+    too_many_errors: string;
+    api_key_configuration_needed: string;
   };
   notifications: {
-    apiKeySetupTitle: string;
-    apiKeySetupMessage: string;
-    tooManyErrorsWarning: string;
-    rateLimitWarning: string;
-    quotaExceededError: string;
-    networkWarning: string;
-    serviceUnavailableWarning: string;
-    aiReEnabled: string;
-    rateLimitPassed: string;
+    api_key_setup_title: string;
+    api_key_setup_message: string;
+    too_many_errors_warning: string;
+    rate_limit_warning: string;
+    quota_exceeded_error: string;
+    network_warning: string;
+    service_unavailable_warning: string;
+    ai_re_enabled: string;
+    rate_limit_passed: string;
   };
   actions: {
-    openSettings: string;
-    getApiKey: string;
-    disableAi: string;
-    checkBilling: string;
-    learnMore: string;
+    open_settings: string;
+    get_api_key: string;
+    disable_ai: string;
+    check_billing: string;
+    learn_more: string;
   };
   ui: {
-    panelTitle: string;
-    aiAnalysisPrefix: string;
-    aiReviewPrefix: string;
+    panel_title: string;
+    ai_analysis_prefix: string;
+    ai_review_prefix: string;
   };
 }
 
-// Tüm dillerin çevirileri - bu bizim translation database'imiz
+// Tüm dillerin çevirileri - İngilizce key'ler ile organize edildi
 const translations: Record<string, Translations> = {
   english: {
-    cursorAnalysis: {
+    cursor_analysis: {
       function:
         "Cursor paused for analysis. Current context: Function definition - Consider: Does this function have a single responsibility?",
       conditional:
@@ -62,63 +62,63 @@ const translations: Record<string, Translations> = {
       loop: "Cursor paused for analysis. Current context: Loop logic - Consider: Is this loop complexity necessary? Could it be refactored?",
       comment:
         "Cursor paused for analysis. Current context: Comment - Good practice! Comments help explain the 'why', not just the 'what'.",
-      longLine:
+      long_line:
         "Cursor paused for analysis. Current context: Long line ({length} characters) - Consider breaking it into multiple lines for better readability.",
-      emptyLine:
+      empty_line:
         "Cursor paused for analysis. Current context: Empty line - White space can improve code readability when used purposefully.",
       generic: "Cursor paused for analysis. Current context: {context}",
     },
-    newlineMessages: {
+    newline_messages: {
       single: "✨ New line added - great structure!",
       multiple: "✨ {count} new lines added - good code organization!",
     },
     errors: {
-      apiKeyRequired: "API key required for AI analysis",
-      invalidApiKey: "Invalid API key - Please check settings",
-      rateLimitReached: "Rate limit reached - Will retry automatically",
-      quotaExceeded: "API quota exceeded - Check billing",
-      connectionIssue: "Connection issue - Retrying...",
-      serviceUnavailable: "OpenAI service unavailable - Retrying...",
-      aiUnavailable: "AI temporarily unavailable",
-      tooManyErrors:
+      api_key_required: "API key required for AI analysis",
+      invalid_api_key: "Invalid API key - Please check settings",
+      rate_limit_reached: "Rate limit reached - Will retry automatically",
+      quota_exceeded: "API quota exceeded - Check billing",
+      connection_issue: "Connection issue - Retrying...",
+      service_unavailable: "OpenAI service unavailable - Retrying...",
+      ai_unavailable: "AI temporarily unavailable",
+      too_many_errors:
         "AI features paused due to repeated errors. Will retry automatically in 10 minutes.",
-      apiKeyConfigurationNeeded:
+      api_key_configuration_needed:
         "API key required - Please configure your OpenAI API key in settings to enable AI feedback",
     },
     notifications: {
-      apiKeySetupTitle:
+      api_key_setup_title:
         "🤖 AI Code Feedback: OpenAI API key required for AI features.",
-      apiKeySetupMessage:
+      api_key_setup_message:
         "🤖 AI Code Feedback: OpenAI API key required for AI features.",
-      tooManyErrorsWarning:
+      too_many_errors_warning:
         "⚠️ AI Code Feedback: Too many consecutive errors. AI features temporarily disabled for 10 minutes.",
-      rateLimitWarning:
+      rate_limit_warning:
         "⏱️ AI Code Feedback: Rate limit reached. AI features will resume in approximately {minutes} minute(s).",
-      quotaExceededError:
+      quota_exceeded_error:
         "💳 AI Code Feedback: OpenAI API quota exceeded. Please check your billing.",
-      networkWarning:
+      network_warning:
         "🌐 AI Code Feedback: Network connection issue. Will retry automatically.",
-      serviceUnavailableWarning:
+      service_unavailable_warning:
         "🔧 AI Code Feedback: OpenAI service temporarily unavailable. Will retry automatically.",
-      aiReEnabled: "✅ AI Code Feedback: AI analysis has been re-enabled.",
-      rateLimitPassed:
+      ai_re_enabled: "✅ AI Code Feedback: AI analysis has been re-enabled.",
+      rate_limit_passed:
         "✅ AI Code Feedback: Rate limit period has passed. AI analysis is now available again.",
     },
     actions: {
-      openSettings: "Open Settings",
-      getApiKey: "Get API Key",
-      disableAi: "Disable AI Features",
-      checkBilling: "Check Billing",
-      learnMore: "Learn More",
+      open_settings: "Open Settings",
+      get_api_key: "Get API Key",
+      disable_ai: "Disable AI Features",
+      check_billing: "Check Billing",
+      learn_more: "Learn More",
     },
     ui: {
-      panelTitle: "🤖 AI Code Feedback",
-      aiAnalysisPrefix: "🎯",
-      aiReviewPrefix: "🔍 AI Code Review:",
+      panel_title: "🤖 AI Code Feedback",
+      ai_analysis_prefix: "🎯",
+      ai_review_prefix: "🔍 AI Code Review:",
     },
   },
-  español: {
-    cursorAnalysis: {
+  espanol: {
+    cursor_analysis: {
       function:
         "Cursor pausado para análisis. Contexto actual: Definición de función - Considera: ¿Esta función tiene una sola responsabilidad?",
       conditional:
@@ -126,65 +126,66 @@ const translations: Record<string, Translations> = {
       loop: "Cursor pausado para análisis. Contexto actual: Lógica de bucle - Considera: ¿Es necesaria esta complejidad del bucle? ¿Se puede refactorizar?",
       comment:
         "Cursor pausado para análisis. Contexto actual: Comentario - ¡Buena práctica! Los comentarios ayudan a explicar el 'por qué', no solo el 'qué'.",
-      longLine:
+      long_line:
         "Cursor pausado para análisis. Contexto actual: Línea larga ({length} caracteres) - Considera dividirla en múltiples líneas para mejor legibilidad.",
-      emptyLine:
+      empty_line:
         "Cursor pausado para análisis. Contexto actual: Línea vacía - Los espacios en blanco pueden mejorar la legibilidad cuando se usan con propósito.",
       generic: "Cursor pausado para análisis. Contexto actual: {context}",
     },
-    newlineMessages: {
+    newline_messages: {
       single: "✨ Nueva línea añadida - ¡excelente estructura!",
       multiple:
         "✨ {count} nuevas líneas añadidas - ¡buena organización del código!",
     },
     errors: {
-      apiKeyRequired: "Clave API requerida para análisis IA",
-      invalidApiKey: "Clave API inválida - Por favor revisa la configuración",
-      rateLimitReached:
+      api_key_required: "Clave API requerida para análisis IA",
+      invalid_api_key: "Clave API inválida - Por favor revisa la configuración",
+      rate_limit_reached:
         "Límite de velocidad alcanzado - Se reintentará automáticamente",
-      quotaExceeded: "Cuota de API excedida - Revisa la facturación",
-      connectionIssue: "Problema de conexión - Reintentando...",
-      serviceUnavailable: "Servicio OpenAI no disponible - Reintentando...",
-      aiUnavailable: "IA temporalmente no disponible",
-      tooManyErrors:
+      quota_exceeded: "Cuota de API excedida - Revisa la facturación",
+      connection_issue: "Problema de conexión - Reintentando...",
+      service_unavailable: "Servicio OpenAI no disponible - Reintentando...",
+      ai_unavailable: "IA temporalmente no disponible",
+      too_many_errors:
         "Funciones IA pausadas debido a errores repetidos. Se reintentará automáticamente en 10 minutos.",
-      apiKeyConfigurationNeeded:
+      api_key_configuration_needed:
         "Clave API requerida - Por favor configura tu clave API de OpenAI en los ajustes para habilitar el feedback IA",
     },
     notifications: {
-      apiKeySetupTitle:
+      api_key_setup_title:
         "🤖 AI Code Feedback: Clave API de OpenAI requerida para funciones IA.",
-      apiKeySetupMessage:
+      api_key_setup_message:
         "🤖 AI Code Feedback: Clave API de OpenAI requerida para funciones IA.",
-      tooManyErrorsWarning:
+      too_many_errors_warning:
         "⚠️ AI Code Feedback: Demasiados errores consecutivos. Funciones IA deshabilitadas temporalmente por 10 minutos.",
-      rateLimitWarning:
+      rate_limit_warning:
         "⏱️ AI Code Feedback: Límite de velocidad alcanzado. Las funciones IA se reanudarán en aproximadamente {minutes} minuto(s).",
-      quotaExceededError:
+      quota_exceeded_error:
         "💳 AI Code Feedback: Cuota de API de OpenAI excedida. Por favor revisa tu facturación.",
-      networkWarning:
+      network_warning:
         "🌐 AI Code Feedback: Problema de conexión de red. Se reintentará automáticamente.",
-      serviceUnavailableWarning:
+      service_unavailable_warning:
         "🔧 AI Code Feedback: Servicio OpenAI temporalmente no disponible. Se reintentará automáticamente.",
-      aiReEnabled: "✅ AI Code Feedback: El análisis IA ha sido rehabilitado.",
-      rateLimitPassed:
+      ai_re_enabled:
+        "✅ AI Code Feedback: El análisis IA ha sido rehabilitado.",
+      rate_limit_passed:
         "✅ AI Code Feedback: El período de límite de velocidad ha pasado. El análisis IA está disponible nuevamente.",
     },
     actions: {
-      openSettings: "Abrir Ajustes",
-      getApiKey: "Obtener Clave API",
-      disableAi: "Deshabilitar Funciones IA",
-      checkBilling: "Revisar Facturación",
-      learnMore: "Aprender Más",
+      open_settings: "Abrir Ajustes",
+      get_api_key: "Obtener Clave API",
+      disable_ai: "Deshabilitar Funciones IA",
+      check_billing: "Revisar Facturación",
+      learn_more: "Aprender Más",
     },
     ui: {
-      panelTitle: "🤖 Feedback IA de Código",
-      aiAnalysisPrefix: "🎯",
-      aiReviewPrefix: "🔍 Revisión IA del Código:",
+      panel_title: "🤖 Feedback IA de Código",
+      ai_analysis_prefix: "🎯",
+      ai_review_prefix: "🔍 Revisión IA del Código:",
     },
   },
-  türkçe: {
-    cursorAnalysis: {
+  turkce: {
+    cursor_analysis: {
       function:
         "İmleç analiz için durdu. Mevcut bağlam: Fonksiyon tanımı - Düşün: Bu fonksiyonun tek bir sorumluluğu var mı?",
       conditional:
@@ -192,61 +193,61 @@ const translations: Record<string, Translations> = {
       loop: "İmleç analiz için durdu. Mevcut bağlam: Döngü mantığı - Düşün: Bu döngü karmaşıklığı gerekli mi? Yeniden düzenlenebilir mi?",
       comment:
         "İmleç analiz için durdu. Mevcut bağlam: Yorum - İyi uygulama! Yorumlar sadece 'ne'yi değil, 'neden'i açıklamaya yardımcı olur.",
-      longLine:
+      long_line:
         "İmleç analiz için durdu. Mevcut bağlam: Uzun satır ({length} karakter) - Daha iyi okunabilirlik için birden fazla satıra bölmeyi düşün.",
-      emptyLine:
+      empty_line:
         "İmleç analiz için durdu. Mevcut bağlam: Boş satır - Beyaz alan, amaçlı kullanıldığında kod okunabilirliğini artırabilir.",
       generic: "İmleç analiz için durdu. Mevcut bağlam: {context}",
     },
-    newlineMessages: {
+    newline_messages: {
       single: "✨ Yeni satır eklendi - harika yapı!",
       multiple: "✨ {count} yeni satır eklendi - iyi kod organizasyonu!",
     },
     errors: {
-      apiKeyRequired: "AI analizi için API anahtarı gerekli",
-      invalidApiKey: "Geçersiz API anahtarı - Lütfen ayarları kontrol edin",
-      rateLimitReached:
+      api_key_required: "AI analizi için API anahtarı gerekli",
+      invalid_api_key: "Geçersiz API anahtarı - Lütfen ayarları kontrol edin",
+      rate_limit_reached:
         "Hız sınırına ulaşıldı - Otomatik olarak yeniden denenecek",
-      quotaExceeded: "API kotası aşıldı - Faturalandırmayı kontrol edin",
-      connectionIssue: "Bağlantı sorunu - Yeniden deneniyor...",
-      serviceUnavailable:
+      quota_exceeded: "API kotası aşıldı - Faturalandırmayı kontrol edin",
+      connection_issue: "Bağlantı sorunu - Yeniden deneniyor...",
+      service_unavailable:
         "OpenAI servisi kullanılamıyor - Yeniden deneniyor...",
-      aiUnavailable: "AI geçici olarak kullanılamıyor",
-      tooManyErrors:
+      ai_unavailable: "AI geçici olarak kullanılamıyor",
+      too_many_errors:
         "Tekrarlanan hatalar nedeniyle AI özellikleri duraklatıldı. 10 dakika içinde otomatik olarak yeniden denenecek.",
-      apiKeyConfigurationNeeded:
+      api_key_configuration_needed:
         "API anahtarı gerekli - AI geri bildirimini etkinleştirmek için lütfen OpenAI API anahtarınızı ayarlarda yapılandırın",
     },
     notifications: {
-      apiKeySetupTitle:
+      api_key_setup_title:
         "🤖 AI Code Feedback: AI özellikleri için OpenAI API anahtarı gerekli.",
-      apiKeySetupMessage:
+      api_key_setup_message:
         "🤖 AI Code Feedback: AI özellikleri için OpenAI API anahtarı gerekli.",
-      tooManyErrorsWarning:
+      too_many_errors_warning:
         "⚠️ AI Code Feedback: Çok fazla ardışık hata. AI özellikleri 10 dakika geçici olarak devre dışı bırakıldı.",
-      rateLimitWarning:
+      rate_limit_warning:
         "⏱️ AI Code Feedback: Hız sınırına ulaşıldı. AI özellikleri yaklaşık {minutes} dakika içinde devam edecek.",
-      quotaExceededError:
+      quota_exceeded_error:
         "💳 AI Code Feedback: OpenAI API kotası aşıldı. Lütfen faturalandırmanızı kontrol edin.",
-      networkWarning:
+      network_warning:
         "🌐 AI Code Feedback: Ağ bağlantısı sorunu. Otomatik olarak yeniden denenecek.",
-      serviceUnavailableWarning:
+      service_unavailable_warning:
         "🔧 AI Code Feedback: OpenAI servisi geçici olarak kullanılamıyor. Otomatik olarak yeniden denenecek.",
-      aiReEnabled: "✅ AI Code Feedback: AI analizi yeniden etkinleştirildi.",
-      rateLimitPassed:
+      ai_re_enabled: "✅ AI Code Feedback: AI analizi yeniden etkinleştirildi.",
+      rate_limit_passed:
         "✅ AI Code Feedback: Hız sınırı süresi geçti. AI analizi şimdi tekrar kullanılabilir.",
     },
     actions: {
-      openSettings: "Ayarları Aç",
-      getApiKey: "API Anahtarı Al",
-      disableAi: "AI Özelliklerini Devre Dışı Bırak",
-      checkBilling: "Faturalandırmayı Kontrol Et",
-      learnMore: "Daha Fazla Öğren",
+      open_settings: "Ayarları Aç",
+      get_api_key: "API Anahtarı Al",
+      disable_ai: "AI Özelliklerini Devre Dışı Bırak",
+      check_billing: "Faturalandırmayı Kontrol Et",
+      learn_more: "Daha Fazla Öğren",
     },
     ui: {
-      panelTitle: "🤖 AI Kod Geri Bildirimi",
-      aiAnalysisPrefix: "🎯",
-      aiReviewPrefix: "🔍 AI Kod İncelemesi:",
+      panel_title: "🤖 AI Kod Geri Bildirimi",
+      ai_analysis_prefix: "🎯",
+      ai_review_prefix: "🔍 AI Kod İncelemesi:",
     },
   },
 };
@@ -260,7 +261,7 @@ function getTranslations(): Translations {
   return translations[selectedLanguage] || translations.english;
 }
 
-// String interpolation için helper fonksiyon
+// String interpolation için helper fonksiyon - değişken değerleri template'e enjekte eder
 function interpolateString(
   template: string,
   values: Record<string, any>
@@ -360,23 +361,24 @@ export function activate(context: vscode.ExtensionContext) {
 // Extension ayarlarını kontrol et ve kullanıcıyı bilgilendir
 function registerConfiguration() {
   const config = vscode.workspace.getConfiguration("codeFeedback");
+  const t = getTranslations(); // Çeviri sistemini kullan
 
   // API anahtarının varlığını kontrol et - bu kritik bir gereksinim
   if (!config.has("openai.apiKey") || !config.get("openai.apiKey")) {
     // Kullanıcıya nazikçe bilgi ver ve seçenekler sun
     vscode.window
       .showInformationMessage(
-        "🤖 AI Code Feedback: OpenAI API key required for AI features.",
-        "Open Settings",
-        "Get API Key"
+        t.notifications.api_key_setup_title,
+        t.actions.open_settings,
+        t.actions.get_api_key
       )
       .then((selection) => {
-        if (selection === "Open Settings") {
+        if (selection === t.actions.open_settings) {
           vscode.commands.executeCommand(
             "workbench.action.openSettings",
             "codeFeedback"
           );
-        } else if (selection === "Get API Key") {
+        } else if (selection === t.actions.get_api_key) {
           vscode.env.openExternal(
             vscode.Uri.parse("https://platform.openai.com/api-keys")
           );
@@ -384,18 +386,17 @@ function registerConfiguration() {
       });
 
     // Feedback paneline de bilgi ekle
-    addFeedback(
-      "⚠️ API key required - Please configure your OpenAI API key in settings to enable AI feedback",
-      "error"
-    );
+    addFeedback(t.errors.api_key_configuration_needed, "error");
   }
 }
 
 // Feedback panelini oluştur - kullanıcı arayüzünün merkezi
 function createFeedbackPanel(context: vscode.ExtensionContext) {
+  const t = getTranslations(); // Çeviri sistemini kullan
+
   feedbackPanel = vscode.window.createWebviewPanel(
     "aiFeedback",
-    "AI Code Feedback",
+    t.ui.panel_title,
     vscode.ViewColumn.Two,
     {
       enableScripts: true,
@@ -432,14 +433,18 @@ function handleCursorMovement(event: vscode.TextEditorSelectionChangeEvent) {
 
 // Metin değişikliği işleyicisi - yeni satır ekleme gibi değişiklikleri yakalar
 function handleTextChange(event: vscode.TextDocumentChangeEvent) {
+  const t = getTranslations(); // Çeviri sistemini kullan
+
   // Her değişikliği kontrol et ve kullanıcıya pozitif feedback ver
   for (const change of event.contentChanges) {
     if (change.text.includes("\n")) {
       const lineCount = change.text.split("\n").length - 1;
       let message =
         lineCount === 1
-          ? "✨ New line added - great structure!"
-          : `✨ ${lineCount} new lines added - good code organization!`;
+          ? t.newline_messages.single
+          : interpolateString(t.newline_messages.multiple, {
+              count: lineCount,
+            });
       addFeedback(message, "newline");
     }
   }
@@ -531,6 +536,7 @@ function categorizeAIError(error: any, response?: Response): AIError {
 // Kullanıcıya hata bildirimini göster - bu fonksiyon kullanıcı deneyiminin kalbini oluşturur
 async function handleAIError(aiError: AIError): Promise<void> {
   console.log("Handling AI error:", aiError);
+  const t = getTranslations(); // Çeviri sistemini kullan
 
   consecutiveErrors++;
   lastErrorTime = Date.now();
@@ -543,22 +549,14 @@ async function handleAIError(aiError: AIError): Promise<void> {
   if (consecutiveErrors >= 3) {
     isAITemporarilyDisabled = true;
 
-    vscode.window.showWarningMessage(
-      "⚠️ AI Code Feedback: Too many consecutive errors. AI features temporarily disabled for 10 minutes."
-    );
-
-    addFeedback(
-      "⏸️ AI features paused due to repeated errors. Will retry automatically in 10 minutes.",
-      "error"
-    );
+    vscode.window.showWarningMessage(t.notifications.too_many_errors_warning);
+    addFeedback(t.errors.too_many_errors, "error");
 
     // 10 dakika sonra tekrar dene
     setTimeout(() => {
       isAITemporarilyDisabled = false;
       consecutiveErrors = 0;
-      vscode.window.showInformationMessage(
-        "✅ AI Code Feedback: AI analysis has been re-enabled."
-      );
+      vscode.window.showInformationMessage(t.notifications.ai_re_enabled);
       addFeedback("✅ AI features re-enabled and ready!", "ai");
     }, 10 * 60 * 1000); // 10 dakika
 
@@ -569,22 +567,22 @@ async function handleAIError(aiError: AIError): Promise<void> {
   switch (aiError.type) {
     case AIErrorType.AUTHENTICATION:
       const authAction = await vscode.window.showErrorMessage(
-        "🔑 AI Code Feedback: Invalid OpenAI API key detected.",
-        "Open Settings",
-        "Get API Key",
-        "Disable AI Features"
+        t.notifications.api_key_setup_title,
+        t.actions.open_settings,
+        t.actions.get_api_key,
+        t.actions.disable_ai
       );
 
-      if (authAction === "Open Settings") {
+      if (authAction === t.actions.open_settings) {
         vscode.commands.executeCommand(
           "workbench.action.openSettings",
           "codeFeedback.openai.apiKey"
         );
-      } else if (authAction === "Get API Key") {
+      } else if (authAction === t.actions.get_api_key) {
         vscode.env.openExternal(
           vscode.Uri.parse("https://platform.openai.com/api-keys")
         );
-      } else if (authAction === "Disable AI Features") {
+      } else if (authAction === t.actions.disable_ai) {
         await vscode.workspace
           .getConfiguration("codeFeedback")
           .update("ai.enabled", false, vscode.ConfigurationTarget.Global);
@@ -597,7 +595,7 @@ async function handleAIError(aiError: AIError): Promise<void> {
       const minutes = Math.ceil(waitTime / 60);
 
       vscode.window.showWarningMessage(
-        `⏱️ AI Code Feedback: Rate limit reached. AI features will resume in approximately ${minutes} minute(s).`
+        interpolateString(t.notifications.rate_limit_warning, { minutes })
       );
 
       // Rate limit süresini bekle ve sonra tekrar etkinleştir
@@ -609,16 +607,16 @@ async function handleAIError(aiError: AIError): Promise<void> {
 
     case AIErrorType.QUOTA_EXCEEDED:
       const quotaAction = await vscode.window.showErrorMessage(
-        "💳 AI Code Feedback: OpenAI API quota exceeded. Please check your billing.",
-        "Check Billing",
-        "Disable AI Features"
+        t.notifications.quota_exceeded_error,
+        t.actions.check_billing,
+        t.actions.disable_ai
       );
 
-      if (quotaAction === "Check Billing") {
+      if (quotaAction === t.actions.check_billing) {
         vscode.env.openExternal(
           vscode.Uri.parse("https://platform.openai.com/account/billing")
         );
-      } else if (quotaAction === "Disable AI Features") {
+      } else if (quotaAction === t.actions.disable_ai) {
         await vscode.workspace
           .getConfiguration("codeFeedback")
           .update("ai.enabled", false, vscode.ConfigurationTarget.Global);
@@ -629,15 +627,13 @@ async function handleAIError(aiError: AIError): Promise<void> {
     case AIErrorType.NETWORK:
       if (consecutiveErrors === 1) {
         // İlk network hatası için sadece feedback panelinde bildir
-        vscode.window.showWarningMessage(
-          "🌐 AI Code Feedback: Network connection issue. Will retry automatically."
-        );
+        vscode.window.showWarningMessage(t.notifications.network_warning);
       }
       break;
 
     case AIErrorType.SERVICE_UNAVAILABLE:
       vscode.window.showWarningMessage(
-        "🔧 AI Code Feedback: OpenAI service temporarily unavailable. Will retry automatically."
+        t.notifications.service_unavailable_warning
       );
       break;
 
@@ -654,19 +650,21 @@ async function handleAIError(aiError: AIError): Promise<void> {
 // Kullanıcı dostu hata mesajı oluştur - karmaşık teknik detayları basitleştir
 // Bu fonksiyon, feedback panelinde gösterilecek daha kısa mesajlar için
 function getUserFriendlyErrorMessage(error: AIError): string {
+  const t = getTranslations(); // Çeviri sistemini kullan
+
   switch (error.type) {
     case AIErrorType.AUTHENTICATION:
-      return "Invalid API key - Please check settings";
+      return t.errors.invalid_api_key;
     case AIErrorType.RATE_LIMIT:
-      return "Rate limit reached - Will retry automatically";
+      return t.errors.rate_limit_reached;
     case AIErrorType.QUOTA_EXCEEDED:
-      return "API quota exceeded - Check billing";
+      return t.errors.quota_exceeded;
     case AIErrorType.NETWORK:
-      return "Connection issue - Retrying...";
+      return t.errors.connection_issue;
     case AIErrorType.SERVICE_UNAVAILABLE:
-      return "OpenAI service unavailable - Retrying...";
+      return t.errors.service_unavailable;
     default:
-      return "AI temporarily unavailable";
+      return t.errors.ai_unavailable;
   }
 }
 
@@ -677,11 +675,12 @@ async function requestAIContextAnalysis(
   document: vscode.TextDocument
 ) {
   const config = getAIConfig();
+  const t = getTranslations(); // Çeviri sistemini kullan
 
   // AI etkin değilse veya geçici olarak devre dışıysa çağrı yapma
   if (!config.enabled || !config.apiKey || isAITemporarilyDisabled) {
     if (!config.apiKey) {
-      addFeedback("⚠️ API key required for AI analysis", "error");
+      addFeedback(`⚠️ ${t.errors.api_key_required}`, "error");
     }
     return;
   }
@@ -690,24 +689,32 @@ async function requestAIContextAnalysis(
     // Context bilgilerini topla - sadece ilgili kod parçasını analiz et
     const context = gatherCodeContext(document, position);
 
-    const prompt = `As a code mentor, analyze this specific line of code and its context:
+    const prompt = `You are a patient programming teacher helping a 16-year-old student who is just learning to code. The student is working on a ${document.languageId} file and their cursor has paused at this line:
 
 Current line: "${lineText}"
-File type: ${document.languageId}
-Context:
+Context around this line:
 ${context}
 
-Provide a brief, educational feedback (max 100 words) focusing on:
-1. Code quality aspects
-2. Potential improvements
-3. Best practices
-4. Learning opportunities
+As their teacher, carefully examine this code and provide feedback that:
 
-Be encouraging and constructive.`;
+1. **Checks for syntax errors**: Look for missing semicolons, brackets, parentheses, quotes, or any syntax issues
+2. **Identifies logic problems**: Check if the code makes logical sense or if there are ordering issues
+3. **Explains the "why"**: If there's an error, explain WHY it's wrong in simple terms a 16-year-old would understand
+4. **Gives specific fix instructions**: Provide step-by-step instructions on exactly HOW to fix any issues
+5. **Encourages learning**: Use encouraging language and relate to common beginner mistakes
+
+Important guidelines:
+- Keep it under 150 words
+- Use simple, clear language appropriate for a 16-year-old
+- If the code looks correct, praise it and maybe suggest one small improvement
+- If there are errors, be specific about what's wrong and how to fix it
+- Always be encouraging and supportive
+
+Remember: This student is learning, so focus on education over perfection.`;
 
     const aiResponse = await callOpenAI(prompt, config);
     if (aiResponse) {
-      addFeedback(`🎯 ${aiResponse}`, "cursor");
+      addFeedback(`${t.ui.ai_analysis_prefix} ${aiResponse}`, "cursor");
     }
     // Eğer aiResponse null ise, callOpenAI içinde hata zaten işlendi ve feedback'e eklendi
   } catch (error) {
@@ -719,6 +726,7 @@ Be encouraging and constructive.`;
 // AI kod analizi - genel kod analizi için
 async function requestAICodeAnalysis(document: vscode.TextDocument) {
   const config = getAIConfig();
+  const t = getTranslations(); // Çeviri sistemini kullan
 
   // AI etkin değilse veya geçici olarak devre dışıysa çağrı yapma
   if (!config.enabled || !config.apiKey || isAITemporarilyDisabled) {
@@ -735,24 +743,42 @@ async function requestAICodeAnalysis(document: vscode.TextDocument) {
         ? codeSnippet.substring(0, maxLength) + "\n// ... (truncated)"
         : codeSnippet;
 
-    const prompt = `As an experienced code reviewer, analyze this ${document.languageId} code:
+    const prompt = `You are a caring programming teacher working with a 16-year-old student who is learning ${document.languageId}. The student has written this code, and you need to review it like a teacher would:
 
+Student's Code:
 \`\`\`${document.languageId}
 ${analysisCode}
 \`\`\`
 
-Provide constructive feedback focusing on:
-1. Code structure and organization
-2. Potential bugs or improvements
-3. Best practices adherence
-4. Performance considerations
-5. Readability and maintainability
+As their teacher, provide a comprehensive review focusing on:
 
-Keep response under 200 words and be specific with actionable suggestions.`;
+1. **Syntax Check**: Scan for ANY syntax errors (missing semicolons, unmatched brackets/parentheses, typos in keywords, wrong capitalization, missing quotes, etc.)
+
+2. **Logic Review**: Check if the code flow makes sense, if variables are used correctly, if functions are called properly
+
+3. **Common Beginner Mistakes**: Look for typical issues new programmers make (like forgetting to declare variables, mixing up = and ==, wrong indentation, etc.)
+
+4. **Educational Explanation**: For ANY problems found, explain:
+   - WHAT is wrong (be specific)
+   - WHY it's wrong (help them understand the concept)
+   - HOW to fix it (give exact steps)
+   - WHY the fix works (build their understanding)
+
+5. **Positive Reinforcement**: Point out what they did RIGHT and encourage their progress
+
+Teaching Guidelines:
+- Use language a 16-year-old would understand
+- Be specific about line numbers or code sections when pointing out issues
+- If everything looks good, praise them and suggest one small learning opportunity
+- Always end with encouragement
+- Keep it under 250 words but be thorough
+- Think like a high school programming teacher
+
+Remember: This student is learning fundamentals, so catch and explain even small syntax errors that might be overlooked by experienced developers.`;
 
     const aiResponse = await callOpenAI(prompt, config);
     if (aiResponse) {
-      addFeedback(`🔍 AI Code Review: ${aiResponse}`, "ai");
+      addFeedback(`${t.ui.ai_review_prefix} ${aiResponse}`, "ai");
     }
     // Hata durumunda zaten handleAIError çağrıldı
   } catch (error) {
@@ -834,27 +860,33 @@ function analyzeCurrentContext(
   lineText: string,
   position: vscode.Position
 ): string {
+  const t = getTranslations(); // Çeviri sistemini kullan
   const trimmedLine = lineText.trim();
 
   // Farklı kod yapıları için context-aware mesajlar
   if (trimmedLine.startsWith("function") || trimmedLine.includes("=>")) {
-    return `Cursor paused for analysis. Current context: Function definition - Consider: Does this function have a single responsibility?`;
+    return t.cursor_analysis.function;
   } else if (trimmedLine.includes("if") || trimmedLine.includes("else")) {
-    return `Cursor paused for analysis. Current context: Conditional logic - Consider: Can this condition be simplified or extracted to a variable?`;
+    return t.cursor_analysis.conditional;
   } else if (trimmedLine.includes("for") || trimmedLine.includes("while")) {
-    return `Cursor paused for analysis. Current context: Loop logic - Consider: Is this loop complexity necessary? Could it be refactored?`;
+    return t.cursor_analysis.loop;
   } else if (trimmedLine.includes("//") || trimmedLine.includes("/*")) {
-    return `Cursor paused for analysis. Current context: Comment - Good practice! Comments help explain the 'why', not just the 'what'.`;
+    return t.cursor_analysis.comment;
   } else if (trimmedLine.length > 100) {
-    return `Cursor paused for analysis. Current context: Long line (${trimmedLine.length} characters) - Consider breaking it into multiple lines for better readability.`;
+    return interpolateString(t.cursor_analysis.long_line, {
+      length: trimmedLine.length,
+    });
   } else if (trimmedLine === "") {
-    return `Cursor paused for analysis. Current context: Empty line - White space can improve code readability when used purposefully.`;
+    return t.cursor_analysis.empty_line;
   }
 
-  return `Cursor paused for analysis. Current context: ${
-    trimmedLine.length > 50 ? trimmedLine.substring(0, 50) + "..." : trimmedLine
-  }`;
+  const context =
+    trimmedLine.length > 50
+      ? trimmedLine.substring(0, 50) + "..."
+      : trimmedLine;
+  return interpolateString(t.cursor_analysis.generic, { context });
 }
+
 function getAIConfig(): AIConfig {
   const config = vscode.workspace.getConfiguration("codeFeedback");
 
@@ -902,6 +934,8 @@ function addFeedback(
 
 function updateFeedbackPanel() {
   if (feedbackPanel) {
+    const t = getTranslations(); // Çeviri sistemini kullan
+
     const feedbackHtml = feedbackList
       .map((feedback) => {
         const typeClass = `feedback-${feedback.type}`;
@@ -1005,7 +1039,7 @@ function updateFeedbackPanel() {
                 </style>
             </head>
             <body>
-                <h2>🤖 AI Code Feedback</h2>
+                <h2>${t.ui.panel_title}</h2>
                 <div class="feedback-container" id="feedbackContainer">${feedbackHtml}</div>
                 
                 <script>
