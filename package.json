@@ -57,6 +57,13 @@
             "Türkçe"
           ],
           "description": "Language for feedback messages / Idioma para mensajes / Geri bildirim mesajları için dil"
+        },
+        "codeFeedback.cursorAnalysisDelay": {
+          "type": "number",
+          "default": 3000,
+          "minimum": 1000,
+          "maximum": 10000,
+          "description": "Delay in milliseconds before cursor analysis starts (1-10 seconds)"
         }
       }
     }
