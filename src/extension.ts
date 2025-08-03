@@ -437,7 +437,7 @@ Be encouraging and constructive.`;
 
     const aiResponse = await callOpenAI(prompt, config);
     if (aiResponse) {
-      addFeedback(`🎯 ${aiResponse}`, "cursor");
+      addFeedback(`🎯 ${aiResponse}`, "ai");
     }
     // Eğer aiResponse null ise, callOpenAI içinde hata zaten işlendi ve feedback'e eklendi
   } catch (error) {
@@ -689,6 +689,10 @@ function updateFeedbackPanel() {
                         border-left: 3px solid var(--vscode-charts-green);
                     }
                     
+                    .feedback-analysis {
+                        border-left: 3px solid var(--vscode-charts-orange);
+                    }
+                    
                     .feedback-ai {
                         border-left: 3px solid var(--vscode-charts-purple);
                         background-color: var(--vscode-inputValidation-infoBackground);
@@ -757,9 +761,9 @@ function updateFeedbackPanel() {
 function getTypeIcon(type: "cursor" | "newline" | "ai" | "error"): string {
   switch (type) {
     case "cursor":
-      return "🎯";
+      return "👆";
     case "newline":
-      return "✨";
+      return "↵";
     case "ai":
       return "🤖";
     case "error":
