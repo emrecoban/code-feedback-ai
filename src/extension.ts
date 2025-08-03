@@ -4,33 +4,68 @@ let feedbackPanel: vscode.WebviewPanel | undefined;
 let cursorTimer: NodeJS.Timeout | undefined;
 let feedbackList: Array<{
   message: string;
-  type: "cursor" | "newline" | "analysis";
+  type: "cursor" | "newline" | "analysis" | "ai";
   timestamp: string;
 }> = [];
 let lastAnalyzedContent: string = "";
+let aiAnalysisTimer: NodeJS.Timeout | undefined;
+
+// AI API yapılandırması ve yardımcı fonksiyonlar
+interface AIConfig {
+  apiKey: string;
+  model: string;
+  enabled: boolean;
+}
 
 export function activate(context: vscode.ExtensionContext) {
   console.log("AI Code Feedback extension is now active!");
 
+  // Extension settings'ini kaydet
+  registerConfiguration();
+
   // Feedback panel'i oluştur
   createFeedbackPanel(context);
 
-  // İmleç hareketi dinleyicisi - artık daha detaylı analiz yapıyor
+  // İmleç hareketi dinleyicisi
   const cursorListener = vscode.window.onDidChangeTextEditorSelection(
     (event) => {
       handleCursorMovement(event);
     }
   );
 
-  // Metin değişikliği dinleyicisi - kod analizi de yapıyor
+  // Metin değişikliği dinleyicisi - artık AI analizi de tetikliyor
   const textChangeListener = vscode.workspace.onDidChangeTextDocument(
     (event) => {
       handleTextChange(event);
       performCodeAnalysis(event);
+      scheduleAIAnalysis(event); // Yeni: AI analizi planla
     }
   );
 
   context.subscriptions.push(cursorListener, textChangeListener);
+}
+
+function registerConfiguration() {
+  // Extension ayarlarını VS Code settings'ine ekle
+  // Bu ayarlar package.json dosyasında da tanımlanmalı
+  const config = vscode.workspace.getConfiguration("codeFeedback");
+
+  // Varsayılan ayarları kontrol et
+  if (!config.has("openai.apiKey")) {
+    vscode.window
+      .showInformationMessage(
+        "AI Code Feedback: OpenAI API key not configured. Go to Settings to enable AI features.",
+        "Open Settings"
+      )
+      .then((selection) => {
+        if (selection === "Open Settings") {
+          vscode.commands.executeCommand(
+            "workbench.action.openSettings",
+            "codeFeedback"
+          );
+        }
+      });
+  }
 }
 
 function createFeedbackPanel(context: vscode.ExtensionContext) {
@@ -47,27 +82,26 @@ function createFeedbackPanel(context: vscode.ExtensionContext) {
 }
 
 function handleCursorMovement(event: vscode.TextEditorSelectionChangeEvent) {
-  // Önceki timer'ı temizle
   if (cursorTimer) {
     clearTimeout(cursorTimer);
   }
 
-  // 3 saniye sonra imleç pozisyonu hakkında contextual feedback ver
   cursorTimer = setTimeout(() => {
     const editor = vscode.window.activeTextEditor;
     if (editor) {
       const position = editor.selection.active;
       const lineText = editor.document.lineAt(position.line).text;
 
-      // Kod context'ine göre daha akıllı feedback üret
       let contextualMessage = analyzeCurrentContext(lineText, position);
       addFeedback(contextualMessage, "cursor");
+
+      // AI'dan daha detaylı context analizi iste
+      requestAIContextAnalysis(lineText, position, editor.document);
     }
   }, 3000);
 }
 
 function handleTextChange(event: vscode.TextDocumentChangeEvent) {
-  // Yeni satır algılama - artık daha detaylı
   for (const change of event.contentChanges) {
     if (change.text.includes("\n")) {
       const lineCount = change.text.split("\n").length - 1;
@@ -81,14 +115,12 @@ function handleTextChange(event: vscode.TextDocumentChangeEvent) {
 }
 
 function performCodeAnalysis(event: vscode.TextDocumentChangeEvent) {
-  // Sürekli analiz yapmamak için içerik değişikliği kontrolü
   const currentContent = event.document.getText();
   if (currentContent === lastAnalyzedContent) {
     return;
   }
   lastAnalyzedContent = currentContent;
 
-  // Debouncing - çok sık analiz yapmamak için
   setTimeout(() => {
     const analysisResults = analyzeCodeStructure(
       currentContent,
@@ -97,14 +129,176 @@ function performCodeAnalysis(event: vscode.TextDocumentChangeEvent) {
     if (analysisResults.length > 0) {
       analysisResults.forEach((result) => addFeedback(result, "analysis"));
     }
-  }, 2000); // 2 saniye bekle, sonra analiz yap
+  }, 2000);
+}
+
+// Yeni fonksiyon: AI analizi planlama
+function scheduleAIAnalysis(event: vscode.TextDocumentChangeEvent) {
+  // Önceki AI analiz timer'ını iptal et
+  if (aiAnalysisTimer) {
+    clearTimeout(aiAnalysisTimer);
+  }
+
+  // 5 saniye sonra AI analizi yap (debouncing)
+  aiAnalysisTimer = setTimeout(() => {
+    requestAICodeAnalysis(event.document);
+  }, 5000);
+}
+
+// AI context analizi - imleç belirli bir yerde durduğunda
+async function requestAIContextAnalysis(
+  lineText: string,
+  position: vscode.Position,
+  document: vscode.TextDocument
+) {
+  const config = getAIConfig();
+  if (!config.enabled || !config.apiKey) {
+    return;
+  }
+
+  try {
+    // Context bilgilerini topla
+    const context = gatherCodeContext(document, position);
+
+    const prompt = `As a code mentor, analyze this specific line of code and its context:
+
+Current line: "${lineText}"
+File type: ${document.languageId}
+Context: ${context}
+
+Provide a brief, educational feedback (max 100 words) focusing on:
+1. Code quality aspects
+2. Potential improvements
+3. Best practices
+4. Learning opportunities
+
+Be encouraging and constructive.`;
+
+    const aiResponse = await callOpenAI(prompt, config);
+    if (aiResponse) {
+      addFeedback(`🤖 AI Context Analysis: ${aiResponse}`, "ai");
+    }
+  } catch (error) {
+    console.error("AI context analysis error:", error);
+    // Kullanıcıya hata gösterme, sessizce devam et
+  }
+}
+
+// AI kod analizi - genel kod analizi için
+async function requestAICodeAnalysis(document: vscode.TextDocument) {
+  const config = getAIConfig();
+  if (!config.enabled || !config.apiKey) {
+    return;
+  }
+
+  try {
+    const codeSnippet = document.getText();
+
+    // Çok büyük dosyalar için kod parçası al
+    const maxLength = 2000;
+    const analysisCode =
+      codeSnippet.length > maxLength
+        ? codeSnippet.substring(0, maxLength) + "\n// ... (truncated)"
+        : codeSnippet;
+
+    const prompt = `As an experienced code reviewer, analyze this ${document.languageId} code:
+
+\`\`\`${document.languageId}
+${analysisCode}
+\`\`\`
+
+Provide constructive feedback focusing on:
+1. Code structure and organization
+2. Potential bugs or improvements
+3. Best practices adherence
+4. Performance considerations
+5. Readability and maintainability
+
+Keep response under 200 words and be specific with actionable suggestions.`;
+
+    const aiResponse = await callOpenAI(prompt, config);
+    if (aiResponse) {
+      addFeedback(`🤖 AI Code Review: ${aiResponse}`, "ai");
+    }
+  } catch (error) {
+    console.error("AI code analysis error:", error);
+    addFeedback(
+      "🤖 AI analysis temporarily unavailable. Check your API configuration.",
+      "ai"
+    );
+  }
+}
+
+// OpenAI API çağrısı
+async function callOpenAI(
+  prompt: string,
+  config: AIConfig
+): Promise<string | null> {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${config.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: config.model,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are an expert code mentor who provides constructive, educational feedback to help developers improve their coding skills. Always be encouraging and focus on learning opportunities.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      max_tokens: 300,
+      temperature: 0.7,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenAI API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.choices[0]?.message?.content?.trim() || null;
+}
+
+// AI konfigürasyonunu al
+function getAIConfig(): AIConfig {
+  const config = vscode.workspace.getConfiguration("codeFeedback");
+
+  return {
+    apiKey: config.get("openai.apiKey", ""),
+    model: config.get("openai.model", "gpt-3.5-turbo"),
+    enabled: config.get("ai.enabled", false),
+  };
+}
+
+// Kod context'ini topla
+function gatherCodeContext(
+  document: vscode.TextDocument,
+  position: vscode.Position
+): string {
+  const startLine = Math.max(0, position.line - 3);
+  const endLine = Math.min(document.lineCount - 1, position.line + 3);
+
+  let context = "";
+  for (let i = startLine; i <= endLine; i++) {
+    const lineText = document.lineAt(i).text;
+    const marker = i === position.line ? " -> " : "    ";
+    context += `${marker}${lineText}\n`;
+  }
+
+  return context;
 }
 
 function analyzeCurrentContext(
   lineText: string,
   position: vscode.Position
 ): string {
-  // Mevcut satırın context'ini analiz et
   const trimmedLine = lineText.trim();
 
   if (trimmedLine.startsWith("function") || trimmedLine.includes("=>")) {
@@ -130,18 +324,12 @@ function analyzeCodeStructure(content: string, languageId: string): string[] {
   const lines = content.split("\n");
   const feedback: string[] = [];
 
-  // Fonksiyon uzunluğu analizi
-  let currentFunctionLength = 0;
-  let inFunction = false;
-
-  // Basit kod kalitesi metrikleri
   const longLines = lines.filter((line) => line.length > 120);
   const emptyLines = lines.filter((line) => line.trim() === "");
   const commentLines = lines.filter(
     (line) => line.trim().startsWith("//") || line.trim().startsWith("/*")
   );
 
-  // Feedback üretimi
   if (longLines.length > 3) {
     feedback.push(
       `Code analysis: ${longLines.length} lines exceed 120 characters. Consider refactoring for better readability.`
@@ -158,7 +346,6 @@ function analyzeCodeStructure(content: string, languageId: string): string[] {
     );
   }
 
-  // JavaScript/TypeScript spesifik analizler
   if (languageId === "javascript" || languageId === "typescript") {
     const varDeclarations = lines.filter((line) =>
       line.includes("var ")
@@ -182,11 +369,13 @@ function analyzeCodeStructure(content: string, languageId: string): string[] {
   return feedback;
 }
 
-function addFeedback(message: string, type: "cursor" | "newline" | "analysis") {
+function addFeedback(
+  message: string,
+  type: "cursor" | "newline" | "analysis" | "ai"
+) {
   const timestamp = new Date().toLocaleTimeString();
   feedbackList.push({ message, type, timestamp });
 
-  // Feedback listesini maksimum 50 öğe ile sınırla (performans için)
   if (feedbackList.length > 50) {
     feedbackList = feedbackList.slice(-50);
   }
@@ -257,6 +446,11 @@ function updateFeedbackPanel() {
                         border-left: 3px solid var(--vscode-charts-orange);
                     }
                     
+                    .feedback-ai {
+                        border-left: 3px solid var(--vscode-charts-purple);
+                        background-color: var(--vscode-inputValidation-infoBackground);
+                    }
+                    
                     .feedback-icon {
                         font-size: 14px;
                         width: 20px;
@@ -267,6 +461,7 @@ function updateFeedbackPanel() {
                     .feedback-content {
                         flex: 1;
                         font-size: 13px;
+                        white-space: pre-wrap;
                     }
                     
                     .feedback-time {
@@ -288,7 +483,7 @@ function updateFeedbackPanel() {
                 </style>
             </head>
             <body>
-                <h2>📊 Code Feedback Analysis</h2>
+                <h2>🤖 AI Code Feedback</h2>
                 <div class="feedback-container" id="feedbackContainer">${feedbackHtml}</div>
                 
                 <script>
@@ -311,7 +506,7 @@ function updateFeedbackPanel() {
   }
 }
 
-function getTypeIcon(type: "cursor" | "newline" | "analysis"): string {
+function getTypeIcon(type: "cursor" | "newline" | "analysis" | "ai"): string {
   switch (type) {
     case "cursor":
       return "👆";
@@ -319,6 +514,8 @@ function getTypeIcon(type: "cursor" | "newline" | "analysis"): string {
       return "↵";
     case "analysis":
       return "🔍";
+    case "ai":
+      return "🤖";
     default:
       return "💡";
   }
@@ -327,5 +524,8 @@ function getTypeIcon(type: "cursor" | "newline" | "analysis"): string {
 export function deactivate() {
   if (cursorTimer) {
     clearTimeout(cursorTimer);
+  }
+  if (aiAnalysisTimer) {
+    clearTimeout(aiAnalysisTimer);
   }
 }
