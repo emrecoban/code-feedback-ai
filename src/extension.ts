@@ -229,41 +229,299 @@ Keep response under 200 words and be specific with actionable suggestions.`;
   }
 }
 
-// OpenAI API çağrısı
+// OpenAI API response yapısını tanımla
+interface OpenAIResponse {
+  choices: Array<{
+    message: {
+      content: string;
+      role: string;
+    };
+    finish_reason: string;
+  }>;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+}
+
+// Error handling için yeni türler ve fonksiyonlar ekleyelim
+enum AIErrorType {
+  AUTHENTICATION = "authentication",
+  RATE_LIMIT = "rate_limit",
+  NETWORK = "network",
+  SERVICE_UNAVAILABLE = "service_unavailable",
+  QUOTA_EXCEEDED = "quota_exceeded",
+  UNKNOWN = "unknown",
+}
+
+interface AIError {
+  type: AIErrorType;
+  message: string;
+  statusCode?: number;
+  retryAfter?: number; // Rate limit durumunda kaç saniye beklemeli
+  canRetry: boolean;
+}
+
+// Global error tracking için değişkenler
+let lastErrorTime: number = 0;
+let consecutiveErrors: number = 0;
+let isAITemporarilyDisabled: boolean = false;
+
+// Ana hata yakalama ve kategorize etme fonksiyonu
+function categorizeAIError(error: any, response?: Response): AIError {
+  // Network hatalarını yakala
+  if (error.name === "TypeError" && error.message.includes("fetch")) {
+    return {
+      type: AIErrorType.NETWORK,
+      message: "No internet connection or OpenAI service is unreachable",
+      canRetry: true,
+    };
+  }
+
+  // HTTP response hatalarını analiz et
+  if (response && !response.ok) {
+    const statusCode = response.status;
+
+    switch (statusCode) {
+      case 401:
+        return {
+          type: AIErrorType.AUTHENTICATION,
+          message: "Invalid OpenAI API key. Please check your configuration.",
+          statusCode,
+          canRetry: false,
+        };
+
+      case 429:
+        // Rate limit header'ını kontrol et
+        const retryAfter = response.headers.get("retry-after");
+        return {
+          type: AIErrorType.RATE_LIMIT,
+          message:
+            "OpenAI API rate limit exceeded. Please wait before trying again.",
+          statusCode,
+          retryAfter: retryAfter ? parseInt(retryAfter) : 60,
+          canRetry: true,
+        };
+
+      case 402:
+        return {
+          type: AIErrorType.QUOTA_EXCEEDED,
+          message:
+            "OpenAI API quota exceeded. Please check your billing and usage.",
+          statusCode,
+          canRetry: false,
+        };
+
+      case 503:
+      case 502:
+      case 500:
+        return {
+          type: AIErrorType.SERVICE_UNAVAILABLE,
+          message:
+            "OpenAI service is temporarily unavailable. Please try again later.",
+          statusCode,
+          canRetry: true,
+        };
+    }
+  }
+
+  // Bilinmeyen hatalar için fallback
+  return {
+    type: AIErrorType.UNKNOWN,
+    message: `Unexpected error: ${error.message || "Unknown error occurred"}`,
+    canRetry: true,
+  };
+}
+
+// Kullanıcıya hata bildirimini göster
+async function handleAIError(aiError: AIError): Promise<void> {
+  consecutiveErrors++;
+  lastErrorTime = Date.now();
+
+  // Çok fazla ardışık hata varsa AI'ı geçici olarak devre dışı bırak
+  if (consecutiveErrors >= 3) {
+    isAITemporarilyDisabled = true;
+
+    // 10 dakika sonra tekrar dene
+    setTimeout(() => {
+      isAITemporarilyDisabled = false;
+      consecutiveErrors = 0;
+      vscode.window.showInformationMessage(
+        "AI Code Feedback: AI analysis has been re-enabled. You can now receive AI-powered feedback again."
+      );
+    }, 10 * 60 * 1000); // 10 dakika
+  }
+
+  // Hata türüne göre uygun bildirim göster
+  switch (aiError.type) {
+    case AIErrorType.AUTHENTICATION:
+      const authAction = await vscode.window.showErrorMessage(
+        "🔑 AI Code Feedback: Invalid OpenAI API key detected.",
+        "Open Settings",
+        "Get API Key",
+        "Disable AI Features"
+      );
+
+      if (authAction === "Open Settings") {
+        vscode.commands.executeCommand(
+          "workbench.action.openSettings",
+          "codeFeedback.openai.apiKey"
+        );
+      } else if (authAction === "Get API Key") {
+        vscode.env.openExternal(
+          vscode.Uri.parse("https://platform.openai.com/api-keys")
+        );
+      } else if (authAction === "Disable AI Features") {
+        await vscode.workspace
+          .getConfiguration("codeFeedback")
+          .update("ai.enabled", false, vscode.ConfigurationTarget.Global);
+        vscode.window.showInformationMessage(
+          "AI features have been disabled. You can re-enable them in settings."
+        );
+      }
+      break;
+
+    case AIErrorType.RATE_LIMIT:
+      const waitTime = aiError.retryAfter || 60;
+      const minutes = Math.ceil(waitTime / 60);
+
+      vscode.window.showWarningMessage(
+        `⏱️ AI Code Feedback: Rate limit reached. AI features will resume in approximately ${minutes} minute(s).`
+      );
+
+      // Rate limit süresini bekle ve sonra tekrar etkinleştir
+      setTimeout(() => {
+        consecutiveErrors = Math.max(0, consecutiveErrors - 1);
+        vscode.window.showInformationMessage(
+          "✅ AI Code Feedback: Rate limit period has passed. AI analysis is now available again."
+        );
+      }, waitTime * 1000);
+      break;
+
+    case AIErrorType.QUOTA_EXCEEDED:
+      const quotaAction = await vscode.window.showErrorMessage(
+        "💳 AI Code Feedback: OpenAI API quota exceeded. Please check your billing.",
+        "Check Billing",
+        "Disable AI Features"
+      );
+
+      if (quotaAction === "Check Billing") {
+        vscode.env.openExternal(
+          vscode.Uri.parse("https://platform.openai.com/account/billing")
+        );
+      } else if (quotaAction === "Disable AI Features") {
+        await vscode.workspace
+          .getConfiguration("codeFeedback")
+          .update("ai.enabled", false, vscode.ConfigurationTarget.Global);
+      }
+      break;
+
+    case AIErrorType.NETWORK:
+      if (consecutiveErrors === 1) {
+        // İlk network hatası için bildirim göster
+        vscode.window.showWarningMessage(
+          "🌐 AI Code Feedback: Network connection issue detected. AI features will retry automatically."
+        );
+      }
+      break;
+
+    case AIErrorType.SERVICE_UNAVAILABLE:
+      vscode.window.showWarningMessage(
+        "🔧 AI Code Feedback: OpenAI service is temporarily unavailable. Will retry automatically."
+      );
+      break;
+
+    default:
+      if (consecutiveErrors <= 2) {
+        // Bilinmeyen hatalar için sadece ilk birkaç sefer bildirim göster
+        vscode.window.showErrorMessage(
+          `❌ AI Code Feedback: ${aiError.message}`
+        );
+      }
+  }
+
+  // Feedback paneline hata durumunu bildir
+  addFeedback(
+    `⚠️ AI temporarily unavailable: ${getSimplifiedErrorMessage(aiError)}`,
+    "ai"
+  );
+}
+
+// Kullanıcı dostu hata mesajı oluştur
+function getSimplifiedErrorMessage(error: AIError): string {
+  switch (error.type) {
+    case AIErrorType.AUTHENTICATION:
+      return "Please check your API key in settings";
+    case AIErrorType.RATE_LIMIT:
+      return "Rate limit reached, waiting to retry";
+    case AIErrorType.QUOTA_EXCEEDED:
+      return "API quota exceeded, check billing";
+    case AIErrorType.NETWORK:
+      return "Connection issue, will retry automatically";
+    case AIErrorType.SERVICE_UNAVAILABLE:
+      return "Service temporarily unavailable";
+    default:
+      return "Unexpected error occurred";
+  }
+}
+
+// Güncellenmiş callOpenAI fonksiyonu
 async function callOpenAI(
   prompt: string,
   config: AIConfig
 ): Promise<string | null> {
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: config.model,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are an expert code mentor who provides constructive, educational feedback to help developers improve their coding skills. Always be encouraging and focus on learning opportunities.",
-        },
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      max_tokens: 300,
-      temperature: 0.7,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.status}`);
+  // AI geçici olarak devre dışı bırakılmışsa çağrı yapma
+  if (isAITemporarilyDisabled) {
+    return null;
   }
 
-  const data = await response.json();
-  return data.choices[0]?.message?.content?.trim() || null;
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: config.model,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are an expert code mentor who provides constructive, educational feedback to help developers improve their coding skills. Always be encouraging and focus on learning opportunities.",
+          },
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        max_tokens: 300,
+        temperature: 0.7,
+      }),
+    });
+
+    // Başarılı response durumunda error counter'ını sıfırla
+    if (response.ok) {
+      consecutiveErrors = 0;
+
+      const data = (await response.json()) as OpenAIResponse;
+      return data.choices[0]?.message?.content?.trim() || null;
+    } else {
+      // HTTP error durumunda hata yönetimi yap
+      const aiError = categorizeAIError(
+        new Error(`HTTP ${response.status}`),
+        response
+      );
+      await handleAIError(aiError);
+      return null;
+    }
+  } catch (error) {
+    // Network veya diğer hatalar için hata yönetimi yap
+    const aiError = categorizeAIError(error);
+    await handleAIError(aiError);
+    return null;
+  }
 }
 
 // AI konfigürasyonunu al
