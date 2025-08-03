@@ -42,6 +42,21 @@
             "gpt-4-turbo-preview"
           ],
           "description": "OpenAI model to use for analysis"
+        },
+        "codeFeedback.language": {
+          "type": "string",
+          "default": "english",
+          "enum": [
+            "english",
+            "español",
+            "türkçe"
+          ],
+          "enumItemLabels": [
+            "English",
+            "Español",
+            "Türkçe"
+          ],
+          "description": "Language for feedback messages / Idioma para mensajes / Geri bildirim mesajları için dil"
         }
       }
     }
