@@ -332,9 +332,59 @@ let lastErrorTime: number = 0;
 let consecutiveErrors: number = 0;
 let isAITemporarilyDisabled: boolean = false;
 
+// Mevcut dilin görünen adını al - kullanıcıya göstermek için
+function getCurrentLanguageDisplayName(): string {
+  const config = vscode.workspace.getConfiguration("codeFeedback");
+  const selectedLanguage = config.get("language", "english") as string;
+
+  const displayNames: Record<string, string> = {
+    english: "English",
+    espanol: "Español",
+    turkce: "Türkçe",
+  };
+
+  return displayNames[selectedLanguage] || "English";
+}
+
 // Extension'ın ana aktivasyon fonksiyonu
 export function activate(context: vscode.ExtensionContext) {
   console.log("AI Code Feedback extension is now active!");
+
+  // Configuration değişikliklerini dinle - kullanıcı ayarları değiştirdiğinde tetiklenir
+  const configChangeListener = vscode.workspace.onDidChangeConfiguration(
+    (event) => {
+      // Sadece bizim extension'ımızla ilgili değişiklikleri kontrol et
+      if (event.affectsConfiguration("codeFeedback.language")) {
+        console.log("Language setting changed, updating interface...");
+
+        // Mevcut feedback panelini yeni dille güncelle
+        updateFeedbackPanel();
+
+        // Kullanıcıya değişikliğin uygulandığını bildir
+        const t = getTranslations();
+        addFeedback(
+          `✅ Language changed to: ${getCurrentLanguageDisplayName()}`,
+          "ai"
+        );
+      }
+
+      // API anahtarı değişikliklerini de kontrol et
+      if (event.affectsConfiguration("codeFeedback.openai.apiKey")) {
+        console.log("API key setting changed");
+        // Eğer AI geçici olarak devre dışıysa ve yeni API key varsa, tekrar etkinleştir
+        const config = getAIConfig();
+        if (config.apiKey && isAITemporarilyDisabled) {
+          isAITemporarilyDisabled = false;
+          consecutiveErrors = 0;
+          const t = getTranslations();
+          addFeedback("✅ API key updated - AI features re-enabled!", "ai");
+        }
+      }
+    }
+  );
+
+  // Listener'ı context'e ekle - extension kapanırken temizlensin
+  context.subscriptions.push(configChangeListener);
 
   // Extension ayarlarını kaydet ve kontrol et
   registerConfiguration();
@@ -721,16 +771,60 @@ function getUserFriendlyErrorMessage(error: AIError): string {
   }
 }
 
-// AI kod bloğu analizi - kullanıcı belirli kod parçasını seçtiğinde tetiklenir
+const aiSystemMessages: Record<string, string> = {
+  english: `You are an expert code mentor who provides brief, constructive feedback to help developers improve their coding skills. Always be encouraging and focus on learning opportunities. 
+
+IMPORTANT: Respond in English with plain text only (no markdown formatting):
+- Keep responses under 150 characters
+- Use simple, clear language
+- Be encouraging and educational
+- No special formatting, bullet points, or code blocks`,
+
+  espanol: `Eres un mentor experto en programación que proporciona retroalimentación breve y constructiva para ayudar a los desarrolladores a mejorar sus habilidades de codificación. Siempre sé alentador y enfócate en las oportunidades de aprendizaje.
+
+IMPORTANTE: Responde en español con texto plano solamente (sin formato markdown):
+- Mantén las respuestas bajo 150 caracteres
+- Usa lenguaje simple y claro
+- Sé alentador y educativo
+- Sin formato especial, viñetas o bloques de código`,
+
+  turkce: `Geliştiricilerin kodlama becerilerini geliştirmelerine yardımcı olmak için kısa, yapıcı geri bildirim sağlayan uzman bir kod mentorsun. Her zaman cesaretlendirici ol ve öğrenme fırsatlarına odaklan.
+
+ÖNEMLİ: Türkçe yanıt ver ve sadece düz metin kullan (markdown formatı yok):
+- Yanıtları 150 karakter altında tut
+- Açık ve basit dil kullan
+- Teşvik edici ve eğitici ol
+- Özel format, madde işareti veya kod bloğu yok`,
+};
+
+function getLanguageSpecificPromptSuffix(): string {
+  const config = vscode.workspace.getConfiguration("codeFeedback");
+  const selectedLanguage = config.get("language", "english") as string;
+
+  const suffixes: Record<string, string> = {
+    english: `
+
+Please provide your response in English using simple language. Keep it under 150 characters. Use plain text only, no formatting.`,
+
+    espanol: `
+
+Por favor proporciona tu respuesta en español usando lenguaje simple. Manténla bajo 150 caracteres. Solo texto plano, sin formato.`,
+
+    turkce: `
+
+Lütfen yanıtını Türkçe olarak basit dil kullanarak ver. 150 karakter altında tut. Sadece düz metin, format yok.`,
+  };
+
+  return suffixes[selectedLanguage] || suffixes.english;
+}
 async function requestAICodeBlockAnalysis(
   selectedCode: string,
   selection: vscode.Selection,
   document: vscode.TextDocument
 ) {
   const config = getAIConfig();
-  const t = getTranslations(); // Çeviri sistemini kullan
+  const t = getTranslations();
 
-  // AI etkin değilse veya geçici olarak devre dışıysa çağrı yapma
   if (!config.enabled || !config.apiKey || isAITemporarilyDisabled) {
     if (!config.apiKey) {
       addFeedback(`⚠️ ${t.errors.api_key_required}`, "error");
@@ -739,7 +833,6 @@ async function requestAICodeBlockAnalysis(
   }
 
   try {
-    // Seçilen kod bloğunun çevresindeki context'i de al
     const contextBefore = getContextAroundSelection(
       document,
       selection,
@@ -750,92 +843,40 @@ async function requestAICodeBlockAnalysis(
       selection,
       "after"
     );
-
-    // Kod bloğunun türünü belirle (fonksiyon, döngü, koşul, vb.)
     const blockType = identifyCodeBlockType(selectedCode, document.languageId);
+    const languageSuffix = getLanguageSpecificPromptSuffix();
 
-    const prompt = `You are a programming teacher helping a 16-year-old student understand their code. The student has selected this specific ${
-      document.languageId
-    } code block for review:
+    const prompt = `You are a programming teacher helping a student. The student selected this ${document.languageId} code block:
 
-**Selected Code Block (Lines ${selection.start.line + 1}-${
-      selection.end.line + 1
-    }):**
-\`\`\`${document.languageId}
 ${selectedCode}
-\`\`\`
 
-**Context Before:**
-\`\`\`${document.languageId}
-${contextBefore}
-\`\`\`
+Block type: ${blockType}
 
-**Context After:**
-\`\`\`${document.languageId}
-${contextAfter}
-\`\`\`
+Give brief feedback about this code block. Focus on:
+1. Any syntax errors
+2. Logic issues
+3. One improvement suggestion
 
-**Code Block Type Detected:** ${blockType}
-
-As their teacher, analyze this selected code block with special attention to:
-
-1. **Block-Specific Syntax Check**: 
-   - For ${blockType}: Check syntax rules specific to this code structure
-   - Look for proper opening/closing braces, correct indentation
-   - Verify proper syntax for this type of code block
-
-2. **Logic Flow Analysis**:
-   - Does this code block make logical sense?
-   - Are variables used correctly within this block?
-   - Does the block accomplish what it seems intended to do?
-
-3. **Context Integration**:
-   - How does this block fit with the surrounding code?
-   - Are variables properly defined before use?
-   - Does the block's purpose align with the overall code flow?
-
-4. **Learning-Focused Feedback**:
-   - What is this code block trying to accomplish?
-   - Are there any syntax errors that need fixing?
-   - If correct, explain why it works well
-   - If incorrect, provide step-by-step fixing instructions
-
-5. **Educational Value**:
-   - Help the student understand the purpose of this code block
-   - Explain any programming concepts demonstrated here
-   - Relate to common patterns they should learn
-
-Teaching Guidelines:
-- Use language appropriate for a 16-year-old learning programming
-- Be specific about what's working and what needs improvement
-- If there are errors, explain exactly how to fix them
-- Always encourage their learning progress
-- Keep response under 200 words but be thorough
-- Reference specific lines when pointing out issues
-
-Focus on helping them understand both the "what" and the "why" of their selected code block.`;
+Keep response under 150 characters, plain text only.${languageSuffix}`;
 
     const aiResponse = await callOpenAI(prompt, config);
     if (aiResponse) {
-      addFeedback(`🔍 Code Block Analysis: ${aiResponse}`, "ai");
+      addFeedback(`🔍 Code Block: ${aiResponse}`, "ai");
     }
-    // Eğer aiResponse null ise, callOpenAI içinde hata zaten işlendi
   } catch (error) {
     console.error("AI code block analysis error:", error);
-    // Bu noktada hata zaten handleAIError ile işlendi
   }
 }
 
-// AI context analizi - imleç belirli bir yerde durduğunda tetiklenir
+// Güncellenen AI context analizi fonksiyonu - çok dilli destek ile
 async function requestAIContextAnalysis(
   lineText: string,
   position: vscode.Position,
   document: vscode.TextDocument
 ) {
   const config = getAIConfig();
-  const t = getTranslations(); // Çeviri sistemini kullan
+  const t = getTranslations();
 
-  // AI etkin değilse veya geçici olarak devre dışıysa çağrı yapma
   if (!config.enabled || !config.apiKey || isAITemporarilyDisabled) {
     if (!config.apiKey) {
       addFeedback(`⚠️ ${t.errors.api_key_required}`, "error");
@@ -844,118 +885,80 @@ async function requestAIContextAnalysis(
   }
 
   try {
-    // Context bilgilerini topla - sadece ilgili kod parçasını analiz et
     const context = gatherCodeContext(document, position);
+    const languageSuffix = getLanguageSpecificPromptSuffix();
 
-    const prompt = `You are a patient programming teacher helping a 16-year-old student who is just learning to code. The student is working on a ${document.languageId} file and their cursor has paused at this line:
+    const prompt = `You are a programming teacher. The student's cursor is at this line: "${lineText}"
 
-Current line: "${lineText}"
-Context around this line:
+Context:
 ${context}
 
-As their teacher, carefully examine this code and provide feedback that:
-
-1. **Checks for syntax errors**: Look for missing semicolons, brackets, parentheses, quotes, or any syntax issues
-2. **Identifies logic problems**: Check if the code makes logical sense or if there are ordering issues
-3. **Explains the "why"**: If there's an error, explain WHY it's wrong in simple terms a 16-year-old would understand
-4. **Gives specific fix instructions**: Provide step-by-step instructions on exactly HOW to fix any issues
-5. **Encourages learning**: Use encouraging language and relate to common beginner mistakes
-
-Important guidelines:
-- Keep it under 150 words
-- Use simple, clear language appropriate for a 16-year-old
-- If the code looks correct, praise it and maybe suggest one small improvement
-- If there are errors, be specific about what's wrong and how to fix it
-- Always be encouraging and supportive
-
-Remember: This student is learning, so focus on education over perfection.`;
+Check for syntax errors or give one brief improvement tip. Keep response under 150 characters, plain text only.${languageSuffix}`;
 
     const aiResponse = await callOpenAI(prompt, config);
     if (aiResponse) {
       addFeedback(`${t.ui.ai_analysis_prefix} ${aiResponse}`, "cursor");
     }
-    // Eğer aiResponse null ise, callOpenAI içinde hata zaten işlendi ve feedback'e eklendi
   } catch (error) {
     console.error("AI context analysis error:", error);
-    // Bu noktada hata zaten handleAIError ile işlendi
   }
 }
 
-// AI kod analizi - genel kod analizi için
+// Güncellenen AI kod analizi fonksiyonu
 async function requestAICodeAnalysis(document: vscode.TextDocument) {
   const config = getAIConfig();
-  const t = getTranslations(); // Çeviri sistemini kullan
+  const t = getTranslations();
 
-  // AI etkin değilse veya geçici olarak devre dışıysa çağrı yapma
   if (!config.enabled || !config.apiKey || isAITemporarilyDisabled) {
     return;
   }
 
   try {
     const codeSnippet = document.getText();
-
-    // Çok büyük dosyalar için kod parçası al - API limitlerini aşmamak için
     const maxLength = 2000;
     const analysisCode =
       codeSnippet.length > maxLength
         ? codeSnippet.substring(0, maxLength) + "\n// ... (truncated)"
         : codeSnippet;
 
-    const prompt = `You are a caring programming teacher working with a 16-year-old student who is learning ${document.languageId}. The student has written this code, and you need to review it like a teacher would:
+    const languageSuffix = getLanguageSpecificPromptSuffix();
 
-Student's Code:
-\`\`\`${document.languageId}
+    const prompt = `You are a programming teacher reviewing a student's ${document.languageId} code:
+
 ${analysisCode}
-\`\`\`
 
-As their teacher, provide a comprehensive review focusing on:
+Give brief feedback focusing on:
+1. Main syntax errors
+2. One improvement suggestion
 
-1. **Syntax Check**: Scan for ANY syntax errors (missing semicolons, unmatched brackets/parentheses, typos in keywords, wrong capitalization, missing quotes, etc.)
-
-2. **Logic Review**: Check if the code flow makes sense, if variables are used correctly, if functions are called properly
-
-3. **Common Beginner Mistakes**: Look for typical issues new programmers make (like forgetting to declare variables, mixing up = and ==, wrong indentation, etc.)
-
-4. **Educational Explanation**: For ANY problems found, explain:
-   - WHAT is wrong (be specific)
-   - WHY it's wrong (help them understand the concept)
-   - HOW to fix it (give exact steps)
-   - WHY the fix works (build their understanding)
-
-5. **Positive Reinforcement**: Point out what they did RIGHT and encourage their progress
-
-Teaching Guidelines:
-- Use language a 16-year-old would understand
-- Be specific about line numbers or code sections when pointing out issues
-- If everything looks good, praise them and suggest one small learning opportunity
-- Always end with encouragement
-- Keep it under 250 words but be thorough
-- Think like a high school programming teacher
-
-Remember: This student is learning fundamentals, so catch and explain even small syntax errors that might be overlooked by experienced developers.`;
+Keep response under 150 characters, plain text only.${languageSuffix}`;
 
     const aiResponse = await callOpenAI(prompt, config);
     if (aiResponse) {
       addFeedback(`${t.ui.ai_review_prefix} ${aiResponse}`, "ai");
     }
-    // Hata durumunda zaten handleAIError çağrıldı
   } catch (error) {
     console.error("AI code analysis error:", error);
   }
 }
 
-// OpenAI API çağrısı - tüm hata yönetimi burada gerçekleşir
 async function callOpenAI(
   prompt: string,
   config: AIConfig
 ): Promise<string | null> {
-  // AI geçici olarak devre dışı bırakılmışsa çağrı yapma
   if (isAITemporarilyDisabled) {
     return null;
   }
 
   try {
     console.log("Making OpenAI API call...");
+
+    // Seçilen dile göre sistem mesajını al
+    const selectedLanguage = vscode.workspace
+      .getConfiguration("codeFeedback")
+      .get("language", "english") as string;
+    const systemMessage =
+      aiSystemMessages[selectedLanguage] || aiSystemMessages.english;
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -968,25 +971,22 @@ async function callOpenAI(
         messages: [
           {
             role: "system",
-            content:
-              "You are an expert code mentor who provides constructive, educational feedback to help developers improve their coding skills. Always be encouraging and focus on learning opportunities.",
+            content: systemMessage,
           },
           {
             role: "user",
             content: prompt,
           },
         ],
-        max_tokens: 300,
+        max_tokens: 150, // 120 karakter için yeterli token
         temperature: 0.7,
       }),
     });
 
     console.log("OpenAI API response status:", response.status);
 
-    // Başarılı response durumunda error counter'ını sıfırla
     if (response.ok) {
-      consecutiveErrors = 0; // Başarılı çağrı sonrası error counter'ı sıfırla
-
+      consecutiveErrors = 0;
       const data = (await response.json()) as OpenAIResponse;
       const result = data.choices[0]?.message?.content?.trim() || null;
       console.log(
@@ -995,20 +995,18 @@ async function callOpenAI(
       );
       return result;
     } else {
-      // HTTP error durumunda hata yönetimi yap
       console.log("OpenAI API error response:", await response.text());
       const aiError = categorizeAIError(
         new Error(`HTTP ${response.status}`),
         response
       );
-      await handleAIError(aiError); // Bu fonksiyon artık feedback paneline de mesaj ekliyor
+      await handleAIError(aiError);
       return null;
     }
   } catch (error) {
     console.error("OpenAI API call failed:", error);
-    // Network veya diğer hatalar için hata yönetimi yap
     const aiError = categorizeAIError(error);
-    await handleAIError(aiError); // Bu fonksiyon artık feedback paneline de mesaj ekliyor
+    await handleAIError(aiError);
     return null;
   }
 }
@@ -1138,9 +1136,10 @@ function addFeedback(
   updateFeedbackPanel();
 }
 
+// Güncellenen updateFeedbackPanel fonksiyonu - markdown desteği ile
 function updateFeedbackPanel() {
   if (feedbackPanel) {
-    const t = getTranslations(); // Çeviri sistemini kullan
+    const t = getTranslations();
 
     const feedbackHtml = feedbackList
       .map((feedback) => {
@@ -1173,13 +1172,6 @@ function updateFeedbackPanel() {
                         scroll-behavior: smooth;
                     }
                     
-                    h2 {
-                        color: var(--vscode-titleBar-activeForeground);
-                        border-bottom: 1px solid var(--vscode-widget-border);
-                        padding-bottom: 10px;
-                        margin-bottom: 20px;
-                    }
-                    
                     .feedback-item { 
                         margin: 8px 0; 
                         padding: 12px 16px; 
@@ -1199,10 +1191,6 @@ function updateFeedbackPanel() {
                         border-left: 3px solid var(--vscode-charts-green);
                     }
                     
-                    .feedback-analysis {
-                        border-left: 3px solid var(--vscode-charts-orange);
-                    }
-                    
                     .feedback-ai {
                         border-left: 3px solid var(--vscode-charts-purple);
                         background-color: var(--vscode-inputValidation-infoBackground);
@@ -1218,18 +1206,21 @@ function updateFeedbackPanel() {
                         width: 20px;
                         text-align: center;
                         flex-shrink: 0;
+                        margin-top: 2px;
                     }
                     
                     .feedback-content {
                         flex: 1;
                         font-size: 13px;
-                        white-space: pre-wrap;
+                        word-wrap: break-word;
+                        overflow-wrap: break-word;
                     }
                     
                     .feedback-time {
                         font-size: 11px;
                         color: var(--vscode-descriptionForeground);
                         flex-shrink: 0;
+                        margin-top: 2px;
                     }
                     
                     .feedback-item:hover {
@@ -1242,10 +1233,19 @@ function updateFeedbackPanel() {
                         flex-direction: column;
                         justify-content: flex-start;
                     }
+                    
+                    .panel-title {
+                        color: var(--vscode-titleBar-activeForeground);
+                        border-bottom: 1px solid var(--vscode-widget-border);
+                        padding-bottom: 10px;
+                        margin-bottom: 20px;
+                        font-size: 16px;
+                        font-weight: bold;
+                    }
                 </style>
             </head>
             <body>
-                <h2>${t.ui.panel_title}</h2>
+                <div class="panel-title">${t.ui.panel_title}</div>
                 <div class="feedback-container" id="feedbackContainer">${feedbackHtml}</div>
                 
                 <script>

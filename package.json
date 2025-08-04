@@ -48,15 +48,15 @@
           "default": "english",
           "enum": [
             "english",
-            "español",
-            "türkçe"
+            "espanol",
+            "turkce"
           ],
-          "enumItemLabels": [
+          "enumDescriptions": [
             "English",
             "Español",
             "Türkçe"
           ],
-          "description": "Language for feedback messages / Idioma para mensajes / Geri bildirim mesajları için dil"
+          "description": "Choose the language for AI feedback messages"
         },
         "codeFeedback.cursorAnalysisDelay": {
           "type": "number",
