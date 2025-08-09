@@ -28,20 +28,33 @@
           "default": true,
           "description": "Enable AI-powered code analysis"
         },
-        "codeFeedback.openai.apiKey": {
+        "codeFeedback.ai.provider": {
           "type": "string",
-          "default": "",
-          "description": "OpenAI API key for AI analysis (keep this secure!)"
-        },
-        "codeFeedback.openai.model": {
-          "type": "string",
-          "default": "gpt-3.5-turbo",
           "enum": [
-            "gpt-3.5-turbo",
-            "gpt-4",
-            "gpt-4-turbo-preview"
+            "openai",
+            "gemini",
+            "claude"
           ],
-          "description": "OpenAI model to use for analysis"
+          "default": "openai",
+          "description": "Select which AI provider to use"
+        },
+        "codeFeedback.gemini.apiKey": {
+          "type": "string",
+          "description": "Google Gemini API key"
+        },
+        "codeFeedback.gemini.model": {
+          "type": "string",
+          "default": "gemini-1.5-flash",
+          "description": "Gemini model to use"
+        },
+        "codeFeedback.claude.apiKey": {
+          "type": "string",
+          "description": "Anthropic Claude API key"
+        },
+        "codeFeedback.claude.model": {
+          "type": "string",
+          "default": "claude-3-5-haiku-20241022",
+          "description": "Claude model to use"
         },
         "codeFeedback.language": {
           "type": "string",
