@@ -279,7 +279,7 @@ let feedbackPanel: vscode.WebviewPanel | undefined;
 let cursorTimer: NodeJS.Timeout | undefined;
 let feedbackList: Array<{
   message: string;
-  type: "cursor" | "newline" | "ai" | "error";
+  type: "cursor" | "newline" | "ai" | "error" | "info";
   timestamp: string;
 }> = [];
 let lastAnalyzedContent: string = "";
@@ -364,7 +364,7 @@ export function activate(context: vscode.ExtensionContext) {
         const t = getTranslations();
         addFeedback(
           `✅ Language changed to: ${getCurrentLanguageDisplayName()}`,
-          "ai"
+          "info"
         );
       }
 
@@ -377,7 +377,7 @@ export function activate(context: vscode.ExtensionContext) {
           isAITemporarilyDisabled = false;
           consecutiveErrors = 0;
           const t = getTranslations();
-          addFeedback("✅ API key updated - AI features re-enabled!", "ai");
+          addFeedback("✅ API key updated - AI features re-enabled!", "info");
         }
       }
     }
@@ -502,7 +502,7 @@ function handleCodeBlockSelection(
       `📝 Code block selected (${
         selection.end.line - selection.start.line + 1
       } lines) - Analyzing...`,
-      "cursor"
+      "info"
     );
 
     // AI'dan kod bloğu analizi iste
@@ -526,7 +526,7 @@ function handleCursorMovement(event: vscode.TextEditorSelectionChangeEvent) {
 
       // Önce temel context analizi yap - anında feedback için
       const contextualMessage = analyzeCurrentContext(lineText, position);
-      addFeedback(contextualMessage, "cursor");
+      addFeedback(contextualMessage, "info");
 
       // Sonra AI'dan daha detaylı analiz iste
       await requestAIContextAnalysis(lineText, position, editor.document);
@@ -660,7 +660,7 @@ async function handleAIError(aiError: AIError): Promise<void> {
       isAITemporarilyDisabled = false;
       consecutiveErrors = 0;
       vscode.window.showInformationMessage(t.notifications.ai_re_enabled);
-      addFeedback("✅ AI features re-enabled and ready!", "ai");
+      addFeedback("✅ AI features re-enabled and ready!", "info");
     }, 10 * 60 * 1000); // 10 dakika
 
     return; // Erken çık, daha fazla bildirim gösterme
@@ -704,7 +704,7 @@ async function handleAIError(aiError: AIError): Promise<void> {
       // Rate limit süresini bekle ve sonra tekrar etkinleştir
       setTimeout(() => {
         consecutiveErrors = Math.max(0, consecutiveErrors - 1);
-        addFeedback("✅ Rate limit period passed - AI ready!", "ai");
+        addFeedback("✅ Rate limit period passed - AI ready!", "info");
       }, waitTime * 1000);
       break;
 
@@ -817,6 +817,7 @@ Lütfen yanıtını Türkçe olarak basit dil kullanarak ver. 150 karakter altı
 
   return suffixes[selectedLanguage] || suffixes.english;
 }
+
 async function requestAICodeBlockAnalysis(
   selectedCode: string,
   selection: vscode.Selection,
@@ -897,7 +898,7 @@ Check for syntax errors or give one brief improvement tip. Keep response under 1
 
     const aiResponse = await callOpenAI(prompt, config);
     if (aiResponse) {
-      addFeedback(`${t.ui.ai_analysis_prefix} ${aiResponse}`, "cursor");
+      addFeedback(`${t.ui.ai_analysis_prefix} ${aiResponse}`, "ai");
     }
   } catch (error) {
     console.error("AI context analysis error:", error);
@@ -1123,7 +1124,7 @@ function identifyCodeBlockType(code: string, languageId: string): string {
 // Feedback ekle - tüm feedback'ler burada toplanır
 function addFeedback(
   message: string,
-  type: "cursor" | "newline" | "ai" | "error"
+  type: "cursor" | "newline" | "ai" | "error" | "info"
 ) {
   const timestamp = new Date().toLocaleTimeString();
   feedbackList.push({ message, type, timestamp });
@@ -1192,9 +1193,14 @@ function updateFeedbackPanel() {
                     }
                     
                     .feedback-ai {
-                        border-left: 3px solid var(--vscode-charts-purple);
-                        background-color: var(--vscode-inputValidation-infoBackground);
-                    }
+						border-left: 3px solid var(--vscode-charts-purple);
+						background-color: var(--vscode-inputValidation-infoBackground);
+					}
+
+					.feedback-info {
+						border-left: 3px solid var(--vscode-charts-blue);
+						background-color: var(--vscode-textBlockQuote-background);
+					}
                     
                     .feedback-error {
                         border-left: 3px solid var(--vscode-charts-red);
@@ -1223,8 +1229,16 @@ function updateFeedbackPanel() {
                         margin-top: 2px;
                     }
                     
+                    .feedback-ai .feedback-time {
+                        color: var(--vscode-button-secondaryForeground);
+                    }
+                    
                     .feedback-item:hover {
                         background-color: var(--vscode-list-hoverBackground);
+                    }
+                    
+                    .feedback-ai:hover {
+                        background-color: var(--vscode-button-hoverBackground) !important;
                     }
                     
                     .feedback-container {
@@ -1268,9 +1282,13 @@ function updateFeedbackPanel() {
   }
 }
 
-function getTypeIcon(type: "cursor" | "newline" | "ai" | "error"): string {
+function getTypeIcon(
+  type: "cursor" | "newline" | "ai" | "error" | "info"
+): string {
   switch (type) {
     case "cursor":
+      return "👆";
+    case "info":
       return "👆";
     case "newline":
       return "↵";
