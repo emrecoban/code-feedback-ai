@@ -1,5 +1,12 @@
 import * as vscode from "vscode";
 
+// AI Provider enum - defines which AI services are supported
+enum AIProvider {
+  OPENAI = "openai",
+  GEMINI = "gemini",
+  CLAUDE = "claude",
+}
+
 // Dil sistemi için translation interface'i - İngilizce key'ler ile
 interface Translations {
   cursor_analysis: {
@@ -25,6 +32,8 @@ interface Translations {
     ai_unavailable: string;
     too_many_errors: string;
     api_key_configuration_needed: string;
+    provider_not_selected: string;
+    provider_config_missing: string;
   };
   notifications: {
     api_key_setup_title: string;
@@ -36,6 +45,7 @@ interface Translations {
     service_unavailable_warning: string;
     ai_re_enabled: string;
     rate_limit_passed: string;
+    provider_changed: string;
   };
   actions: {
     open_settings: string;
@@ -43,11 +53,19 @@ interface Translations {
     disable_ai: string;
     check_billing: string;
     learn_more: string;
+    get_openai_key: string;
+    get_gemini_key: string;
+    get_claude_key: string;
   };
   ui: {
     panel_title: string;
     ai_analysis_prefix: string;
     ai_review_prefix: string;
+  };
+  providers: {
+    openai: string;
+    gemini: string;
+    claude: string;
   };
 }
 
@@ -78,31 +96,37 @@ const translations: Record<string, Translations> = {
       rate_limit_reached: "Rate limit reached - Will retry automatically",
       quota_exceeded: "API quota exceeded - Check billing",
       connection_issue: "Connection issue - Retrying...",
-      service_unavailable: "OpenAI service unavailable - Retrying...",
+      service_unavailable: "AI service unavailable - Retrying...",
       ai_unavailable: "AI temporarily unavailable",
       too_many_errors:
         "AI features paused due to repeated errors. Will retry automatically in 10 minutes.",
       api_key_configuration_needed:
-        "API key required - Please configure your OpenAI API key in settings to enable AI feedback",
+        "API key required - Please configure your AI provider API key in settings to enable AI feedback",
+      provider_not_selected:
+        "No AI provider selected - Please choose a provider in settings",
+      provider_config_missing:
+        "Selected AI provider is not properly configured",
     },
     notifications: {
       api_key_setup_title:
-        "🤖 AI Code Feedback: OpenAI API key required for AI features.",
+        "🤖 AI Code Feedback: AI provider API key required for AI features.",
       api_key_setup_message:
-        "🤖 AI Code Feedback: OpenAI API key required for AI features.",
+        "🤖 AI Code Feedback: AI provider API key required for AI features.",
       too_many_errors_warning:
         "⚠️ AI Code Feedback: Too many consecutive errors. AI features temporarily disabled for 10 minutes.",
       rate_limit_warning:
         "⏱️ AI Code Feedback: Rate limit reached. AI features will resume in approximately {minutes} minute(s).",
       quota_exceeded_error:
-        "💳 AI Code Feedback: OpenAI API quota exceeded. Please check your billing.",
+        "💳 AI Code Feedback: AI API quota exceeded. Please check your billing.",
       network_warning:
         "🌐 AI Code Feedback: Network connection issue. Will retry automatically.",
       service_unavailable_warning:
-        "🔧 AI Code Feedback: OpenAI service temporarily unavailable. Will retry automatically.",
+        "🔧 AI Code Feedback: AI service temporarily unavailable. Will retry automatically.",
       ai_re_enabled: "✅ AI Code Feedback: AI analysis has been re-enabled.",
       rate_limit_passed:
         "✅ AI Code Feedback: Rate limit period has passed. AI analysis is now available again.",
+      provider_changed:
+        "🔄 AI Provider changed to {provider}. AI features ready!",
     },
     actions: {
       open_settings: "Open Settings",
@@ -110,11 +134,19 @@ const translations: Record<string, Translations> = {
       disable_ai: "Disable AI Features",
       check_billing: "Check Billing",
       learn_more: "Learn More",
+      get_openai_key: "Get OpenAI Key",
+      get_gemini_key: "Get Gemini Key",
+      get_claude_key: "Get Claude Key",
     },
     ui: {
       panel_title: "🤖 AI Code Feedback",
       ai_analysis_prefix: "🎯",
       ai_review_prefix: "🔍 AI Code Review:",
+    },
+    providers: {
+      openai: "OpenAI",
+      gemini: "Google Gemini",
+      claude: "Anthropic Claude",
     },
   },
   espanol: {
@@ -144,32 +176,38 @@ const translations: Record<string, Translations> = {
         "Límite de velocidad alcanzado - Se reintentará automáticamente",
       quota_exceeded: "Cuota de API excedida - Revisa la facturación",
       connection_issue: "Problema de conexión - Reintentando...",
-      service_unavailable: "Servicio OpenAI no disponible - Reintentando...",
+      service_unavailable: "Servicio IA no disponible - Reintentando...",
       ai_unavailable: "IA temporalmente no disponible",
       too_many_errors:
         "Funciones IA pausadas debido a errores repetidos. Se reintentará automáticamente en 10 minutos.",
       api_key_configuration_needed:
-        "Clave API requerida - Por favor configura tu clave API de OpenAI en los ajustes para habilitar el feedback IA",
+        "Clave API requerida - Por favor configura tu clave API del proveedor IA en los ajustes para habilitar el feedback IA",
+      provider_not_selected:
+        "Ningún proveedor IA seleccionado - Por favor elige un proveedor en los ajustes",
+      provider_config_missing:
+        "El proveedor IA seleccionado no está configurado correctamente",
     },
     notifications: {
       api_key_setup_title:
-        "🤖 AI Code Feedback: Clave API de OpenAI requerida para funciones IA.",
+        "🤖 AI Code Feedback: Clave API del proveedor IA requerida para funciones IA.",
       api_key_setup_message:
-        "🤖 AI Code Feedback: Clave API de OpenAI requerida para funciones IA.",
+        "🤖 AI Code Feedback: Clave API del proveedor IA requerida para funciones IA.",
       too_many_errors_warning:
         "⚠️ AI Code Feedback: Demasiados errores consecutivos. Funciones IA deshabilitadas temporalmente por 10 minutos.",
       rate_limit_warning:
         "⏱️ AI Code Feedback: Límite de velocidad alcanzado. Las funciones IA se reanudarán en aproximadamente {minutes} minuto(s).",
       quota_exceeded_error:
-        "💳 AI Code Feedback: Cuota de API de OpenAI excedida. Por favor revisa tu facturación.",
+        "💳 AI Code Feedback: Cuota de API IA excedida. Por favor revisa tu facturación.",
       network_warning:
         "🌐 AI Code Feedback: Problema de conexión de red. Se reintentará automáticamente.",
       service_unavailable_warning:
-        "🔧 AI Code Feedback: Servicio OpenAI temporalmente no disponible. Se reintentará automáticamente.",
+        "🔧 AI Code Feedback: Servicio IA temporalmente no disponible. Se reintentará automáticamente.",
       ai_re_enabled:
         "✅ AI Code Feedback: El análisis IA ha sido rehabilitado.",
       rate_limit_passed:
         "✅ AI Code Feedback: El período de límite de velocidad ha pasado. El análisis IA está disponible nuevamente.",
+      provider_changed:
+        "🔄 Proveedor IA cambiado a {provider}. ¡Funciones IA listas!",
     },
     actions: {
       open_settings: "Abrir Ajustes",
@@ -177,11 +215,19 @@ const translations: Record<string, Translations> = {
       disable_ai: "Deshabilitar Funciones IA",
       check_billing: "Revisar Facturación",
       learn_more: "Aprender Más",
+      get_openai_key: "Obtener Clave OpenAI",
+      get_gemini_key: "Obtener Clave Gemini",
+      get_claude_key: "Obtener Clave Claude",
     },
     ui: {
       panel_title: "🤖 Feedback IA de Código",
       ai_analysis_prefix: "🎯",
       ai_review_prefix: "🔍 Revisión IA del Código:",
+    },
+    providers: {
+      openai: "OpenAI",
+      gemini: "Google Gemini",
+      claude: "Anthropic Claude",
     },
   },
   turkce: {
@@ -210,32 +256,36 @@ const translations: Record<string, Translations> = {
         "Hız sınırına ulaşıldı - Otomatik olarak yeniden denenecek",
       quota_exceeded: "API kotası aşıldı - Faturalandırmayı kontrol edin",
       connection_issue: "Bağlantı sorunu - Yeniden deneniyor...",
-      service_unavailable:
-        "OpenAI servisi kullanılamıyor - Yeniden deneniyor...",
+      service_unavailable: "AI servisi kullanılamıyor - Yeniden deneniyor...",
       ai_unavailable: "AI geçici olarak kullanılamıyor",
       too_many_errors:
         "Tekrarlanan hatalar nedeniyle AI özellikleri duraklatıldı. 10 dakika içinde otomatik olarak yeniden denenecek.",
       api_key_configuration_needed:
-        "API anahtarı gerekli - AI geri bildirimini etkinleştirmek için lütfen OpenAI API anahtarınızı ayarlarda yapılandırın",
+        "API anahtarı gerekli - AI geri bildirimini etkinleştirmek için lütfen AI sağlayıcı API anahtarınızı ayarlarda yapılandırın",
+      provider_not_selected:
+        "Hiçbir AI sağlayıcı seçilmedi - Lütfen ayarlarda bir sağlayıcı seçin",
+      provider_config_missing: "Seçilen AI sağlayıcı düzgün yapılandırılmamış",
     },
     notifications: {
       api_key_setup_title:
-        "🤖 AI Code Feedback: AI özellikleri için OpenAI API anahtarı gerekli.",
+        "🤖 AI Code Feedback: AI özellikleri için AI sağlayıcı API anahtarı gerekli.",
       api_key_setup_message:
-        "🤖 AI Code Feedback: AI özellikleri için OpenAI API anahtarı gerekli.",
+        "🤖 AI Code Feedback: AI özellikleri için AI sağlayıcı API anahtarı gerekli.",
       too_many_errors_warning:
         "⚠️ AI Code Feedback: Çok fazla ardışık hata. AI özellikleri 10 dakika geçici olarak devre dışı bırakıldı.",
       rate_limit_warning:
         "⏱️ AI Code Feedback: Hız sınırına ulaşıldı. AI özellikleri yaklaşık {minutes} dakika içinde devam edecek.",
       quota_exceeded_error:
-        "💳 AI Code Feedback: OpenAI API kotası aşıldı. Lütfen faturalandırmanızı kontrol edin.",
+        "💳 AI Code Feedback: AI API kotası aşıldı. Lütfen faturalandırmanızı kontrol edin.",
       network_warning:
         "🌐 AI Code Feedback: Ağ bağlantısı sorunu. Otomatik olarak yeniden denenecek.",
       service_unavailable_warning:
-        "🔧 AI Code Feedback: OpenAI servisi geçici olarak kullanılamıyor. Otomatik olarak yeniden denenecek.",
+        "🔧 AI Code Feedback: AI servisi geçici olarak kullanılamıyor. Otomatik olarak yeniden denenecek.",
       ai_re_enabled: "✅ AI Code Feedback: AI analizi yeniden etkinleştirildi.",
       rate_limit_passed:
         "✅ AI Code Feedback: Hız sınırı süresi geçti. AI analizi şimdi tekrar kullanılabilir.",
+      provider_changed:
+        "🔄 AI Sağlayıcı {provider} olarak değiştirildi. AI özellikleri hazır!",
     },
     actions: {
       open_settings: "Ayarları Aç",
@@ -243,11 +293,19 @@ const translations: Record<string, Translations> = {
       disable_ai: "AI Özelliklerini Devre Dışı Bırak",
       check_billing: "Faturalandırmayı Kontrol Et",
       learn_more: "Daha Fazla Öğren",
+      get_openai_key: "OpenAI Anahtarı Al",
+      get_gemini_key: "Gemini Anahtarı Al",
+      get_claude_key: "Claude Anahtarı Al",
     },
     ui: {
       panel_title: "🤖 AI Kod Geri Bildirimi",
       ai_analysis_prefix: "🎯",
       ai_review_prefix: "🔍 AI Kod İncelemesi:",
+    },
+    providers: {
+      openai: "OpenAI",
+      gemini: "Google Gemini",
+      claude: "Anthropic Claude",
     },
   },
 };
@@ -285,27 +343,32 @@ let feedbackList: Array<{
 let lastAnalyzedContent: string = "";
 let aiAnalysisTimer: NodeJS.Timeout | undefined;
 
-// AI API response yapısı
-interface OpenAIResponse {
-  choices: Array<{
-    message: {
-      content: string;
-      role: string;
-    };
-    finish_reason: string;
-  }>;
-  usage?: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
+// Enhanced AI configuration to support multiple providers
+interface AIConfig {
+  provider: AIProvider;
+  openai: {
+    apiKey: string;
+    model: string;
   };
+  gemini: {
+    apiKey: string;
+    model: string;
+  };
+  claude: {
+    apiKey: string;
+    model: string;
+  };
+  enabled: boolean;
 }
 
-// AI konfigürasyon yapısı
-interface AIConfig {
-  apiKey: string;
-  model: string;
-  enabled: boolean;
+// Generic AI response interface that works for all providers
+interface AIResponse {
+  content: string;
+  usage?: {
+    inputTokens?: number;
+    outputTokens?: number;
+    totalTokens?: number;
+  };
 }
 
 // Hata türleri - her hata kategorisi farklı kullanıcı deneyimi gerektirir
@@ -315,6 +378,7 @@ enum AIErrorType {
   NETWORK = "network",
   SERVICE_UNAVAILABLE = "service_unavailable",
   QUOTA_EXCEEDED = "quota_exceeded",
+  PROVIDER_NOT_CONFIGURED = "provider_not_configured",
   UNKNOWN = "unknown",
 }
 
@@ -322,6 +386,7 @@ enum AIErrorType {
 interface AIError {
   type: AIErrorType;
   message: string;
+  provider?: AIProvider;
   statusCode?: number;
   retryAfter?: number;
   canRetry: boolean;
@@ -353,14 +418,11 @@ export function activate(context: vscode.ExtensionContext) {
   // Configuration değişikliklerini dinle - kullanıcı ayarları değiştirdiğinde tetiklenir
   const configChangeListener = vscode.workspace.onDidChangeConfiguration(
     (event) => {
-      // Sadece bizim extension'ımızla ilgili değişiklikleri kontrol et
+      // Dil değişikliklerini kontrol et
       if (event.affectsConfiguration("codeFeedback.language")) {
         console.log("Language setting changed, updating interface...");
-
-        // Mevcut feedback panelini yeni dille güncelle
         updateFeedbackPanel();
 
-        // Kullanıcıya değişikliğin uygulandığını bildir
         const t = getTranslations();
         addFeedback(
           `✅ Language changed to: ${getCurrentLanguageDisplayName()}`,
@@ -368,12 +430,41 @@ export function activate(context: vscode.ExtensionContext) {
         );
       }
 
-      // API anahtarı değişikliklerini de kontrol et
-      if (event.affectsConfiguration("codeFeedback.openai.apiKey")) {
-        console.log("API key setting changed");
-        // Eğer AI geçici olarak devre dışıysa ve yeni API key varsa, tekrar etkinleştir
+      // AI provider değişikliklerini kontrol et
+      if (event.affectsConfiguration("codeFeedback.ai.provider")) {
+        console.log("AI provider setting changed");
         const config = getAIConfig();
-        if (config.apiKey && isAITemporarilyDisabled) {
+        const t = getTranslations();
+
+        // Provider değişikliğini kullanıcıya bildir
+        addFeedback(
+          interpolateString(t.notifications.provider_changed, {
+            provider: t.providers[config.provider] || config.provider,
+          }),
+          "info"
+        );
+
+        // Eğer AI geçici olarak devre dışıysa ve yeni provider düzgün yapılandırılmışsa, tekrar etkinleştir
+        if (isProviderConfigured(config) && isAITemporarilyDisabled) {
+          isAITemporarilyDisabled = false;
+          consecutiveErrors = 0;
+          addFeedback(
+            "✅ AI provider configured - AI features re-enabled!",
+            "info"
+          );
+        }
+      }
+
+      // API key değişikliklerini kontrol et (tüm provider'lar için)
+      if (
+        event.affectsConfiguration("codeFeedback.openai.apiKey") ||
+        event.affectsConfiguration("codeFeedback.gemini.apiKey") ||
+        event.affectsConfiguration("codeFeedback.claude.apiKey")
+      ) {
+        console.log("API key setting changed");
+
+        const config = getAIConfig();
+        if (isProviderConfigured(config) && isAITemporarilyDisabled) {
           isAITemporarilyDisabled = false;
           consecutiveErrors = 0;
           const t = getTranslations();
@@ -412,19 +503,75 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(cursorListener, textChangeListener);
 }
 
-// Extension ayarlarını kontrol et ve kullanıcıyı bilgilendir
+// Check if the selected provider is properly configured
+function isProviderConfigured(config: AIConfig): boolean {
+  switch (config.provider) {
+    case AIProvider.OPENAI:
+      return !!config.openai?.apiKey;
+    case AIProvider.GEMINI:
+      return !!config.gemini?.apiKey;
+    case AIProvider.CLAUDE:
+      return !!config.claude?.apiKey;
+    default:
+      return false;
+  }
+}
+
+// Enhanced configuration registration to handle multiple providers
 function registerConfiguration() {
   const config = vscode.workspace.getConfiguration("codeFeedback");
-  const t = getTranslations(); // Çeviri sistemini kullan
+  const t = getTranslations();
 
-  // API anahtarının varlığını kontrol et - bu kritik bir gereksinim
-  if (!config.has("openai.apiKey") || !config.get("openai.apiKey")) {
-    // Kullanıcıya nazikçe bilgi ver ve seçenekler sun
+  const aiConfig = getAIConfig();
+
+  // Provider seçilmemişse kullanıcıyı bilgilendir
+  if (!aiConfig.provider) {
     vscode.window
       .showInformationMessage(
-        t.notifications.api_key_setup_title,
+        t.errors.provider_not_selected,
+        t.actions.open_settings
+      )
+      .then((selection) => {
+        if (selection === t.actions.open_settings) {
+          vscode.commands.executeCommand(
+            "workbench.action.openSettings",
+            "codeFeedback.ai.provider"
+          );
+        }
+      });
+
+    addFeedback(t.errors.provider_not_selected, "error");
+    return;
+  }
+
+  // Seçilen provider'ın yapılandırılmış olup olmadığını kontrol et
+  if (!isProviderConfigured(aiConfig)) {
+    const providerName = t.providers[aiConfig.provider] || aiConfig.provider;
+
+    // Provider'a göre uygun action button'ları belirle
+    let getKeyAction = t.actions.get_api_key;
+    let keyUrl = "";
+
+    switch (aiConfig.provider) {
+      case AIProvider.OPENAI:
+        getKeyAction = t.actions.get_openai_key;
+        keyUrl = "https://platform.openai.com/api-keys";
+        break;
+      case AIProvider.GEMINI:
+        getKeyAction = t.actions.get_gemini_key;
+        keyUrl = "https://makersuite.google.com/app/apikey";
+        break;
+      case AIProvider.CLAUDE:
+        getKeyAction = t.actions.get_claude_key;
+        keyUrl = "https://console.anthropic.com/dashboard";
+        break;
+    }
+
+    vscode.window
+      .showInformationMessage(
+        `${t.notifications.api_key_setup_title} (${providerName})`,
         t.actions.open_settings,
-        t.actions.get_api_key
+        getKeyAction
       )
       .then((selection) => {
         if (selection === t.actions.open_settings) {
@@ -432,14 +579,11 @@ function registerConfiguration() {
             "workbench.action.openSettings",
             "codeFeedback"
           );
-        } else if (selection === t.actions.get_api_key) {
-          vscode.env.openExternal(
-            vscode.Uri.parse("https://platform.openai.com/api-keys")
-          );
+        } else if (selection === getKeyAction) {
+          vscode.env.openExternal(vscode.Uri.parse(keyUrl));
         }
       });
 
-    // Feedback paneline de bilgi ekle
     addFeedback(t.errors.api_key_configuration_needed, "error");
   }
 }
@@ -566,9 +710,41 @@ function scheduleAIAnalysis(event: vscode.TextDocumentChangeEvent) {
   }, 5000);
 }
 
+// Enhanced AI configuration getter to support multiple providers
+function getAIConfig(): AIConfig {
+  const config = vscode.workspace.getConfiguration("codeFeedback");
+
+  return {
+    provider: config.get("ai.provider", AIProvider.OPENAI) as AIProvider,
+    openai: {
+      apiKey: config.get("openai.apiKey", ""),
+      model: config.get("openai.model", "gpt-3.5-turbo"),
+    },
+    gemini: {
+      apiKey: config.get("gemini.apiKey", ""),
+      model: config.get("gemini.model", "gemini-1.5-flash"),
+    },
+    claude: {
+      apiKey: config.get("claude.apiKey", ""),
+      model: config.get("claude.model", "claude-3-5-haiku-20241022"),
+    },
+    enabled: config.get("ai.enabled", true),
+  };
+}
+
 // Gelen hataları kategorize et - her hata türü farklı muamele gerektirir
-function categorizeAIError(error: any, response?: Response): AIError {
-  console.log("Categorizing AI error:", error, response?.status);
+function categorizeAIError(
+  error: any,
+  response?: Response,
+  provider?: AIProvider
+): AIError {
+  console.log(
+    "Categorizing AI error:",
+    error,
+    response?.status,
+    "Provider:",
+    provider
+  );
 
   // Network hatalarını yakala - internet bağlantısı veya DNS sorunları
   if (
@@ -577,7 +753,8 @@ function categorizeAIError(error: any, response?: Response): AIError {
   ) {
     return {
       type: AIErrorType.NETWORK,
-      message: "No internet connection or OpenAI service is unreachable",
+      message: "No internet connection or AI service is unreachable",
+      provider,
       canRetry: true,
     };
   }
@@ -590,7 +767,8 @@ function categorizeAIError(error: any, response?: Response): AIError {
       case 401: // Unauthorized - yanlış API anahtarı
         return {
           type: AIErrorType.AUTHENTICATION,
-          message: "Invalid OpenAI API key. Please check your configuration.",
+          message: `Invalid ${provider} API key. Please check your configuration.`,
+          provider,
           statusCode,
           canRetry: false,
         };
@@ -599,8 +777,8 @@ function categorizeAIError(error: any, response?: Response): AIError {
         const retryAfter = response.headers.get("retry-after");
         return {
           type: AIErrorType.RATE_LIMIT,
-          message:
-            "OpenAI API rate limit exceeded. Please wait before trying again.",
+          message: `${provider} API rate limit exceeded. Please wait before trying again.`,
+          provider,
           statusCode,
           retryAfter: retryAfter ? parseInt(retryAfter) : 60,
           canRetry: true,
@@ -609,8 +787,8 @@ function categorizeAIError(error: any, response?: Response): AIError {
       case 402: // Payment Required - quota aşımı
         return {
           type: AIErrorType.QUOTA_EXCEEDED,
-          message:
-            "OpenAI API quota exceeded. Please check your billing and usage.",
+          message: `${provider} API quota exceeded. Please check your billing and usage.`,
+          provider,
           statusCode,
           canRetry: false,
         };
@@ -620,8 +798,8 @@ function categorizeAIError(error: any, response?: Response): AIError {
       case 500: // Internal Server Error
         return {
           type: AIErrorType.SERVICE_UNAVAILABLE,
-          message:
-            "OpenAI service is temporarily unavailable. Please try again later.",
+          message: `${provider} service is temporarily unavailable. Please try again later.`,
+          provider,
           statusCode,
           canRetry: true,
         };
@@ -631,7 +809,10 @@ function categorizeAIError(error: any, response?: Response): AIError {
   // Bilinmeyen hatalar için fallback
   return {
     type: AIErrorType.UNKNOWN,
-    message: `Unexpected error: ${error.message || "Unknown error occurred"}`,
+    message: `Unexpected error with ${provider}: ${
+      error.message || "Unknown error occurred"
+    }`,
+    provider,
     canRetry: true,
   };
 }
@@ -669,22 +850,46 @@ async function handleAIError(aiError: AIError): Promise<void> {
   // Hata türüne göre uygun bildirim göster - her hata farklı yaklaşım gerektirir
   switch (aiError.type) {
     case AIErrorType.AUTHENTICATION:
+      const providerName = aiError.provider
+        ? t.providers[aiError.provider]
+        : "AI";
+      let getKeyAction = t.actions.get_api_key;
+      let keyUrl = "";
+      let settingPath = "codeFeedback";
+
+      // Provider'a göre uygun action ve URL belirle
+      switch (aiError.provider) {
+        case AIProvider.OPENAI:
+          getKeyAction = t.actions.get_openai_key;
+          keyUrl = "https://platform.openai.com/api-keys";
+          settingPath = "codeFeedback.openai.apiKey";
+          break;
+        case AIProvider.GEMINI:
+          getKeyAction = t.actions.get_gemini_key;
+          keyUrl = "https://makersuite.google.com/app/apikey";
+          settingPath = "codeFeedback.gemini.apiKey";
+          break;
+        case AIProvider.CLAUDE:
+          getKeyAction = t.actions.get_claude_key;
+          keyUrl = "https://console.anthropic.com/dashboard";
+          settingPath = "codeFeedback.claude.apiKey";
+          break;
+      }
+
       const authAction = await vscode.window.showErrorMessage(
-        t.notifications.api_key_setup_title,
+        `${t.notifications.api_key_setup_title} (${providerName})`,
         t.actions.open_settings,
-        t.actions.get_api_key,
+        getKeyAction,
         t.actions.disable_ai
       );
 
       if (authAction === t.actions.open_settings) {
         vscode.commands.executeCommand(
           "workbench.action.openSettings",
-          "codeFeedback.openai.apiKey"
+          settingPath
         );
-      } else if (authAction === t.actions.get_api_key) {
-        vscode.env.openExternal(
-          vscode.Uri.parse("https://platform.openai.com/api-keys")
-        );
+      } else if (authAction === getKeyAction) {
+        vscode.env.openExternal(vscode.Uri.parse(keyUrl));
       } else if (authAction === t.actions.disable_ai) {
         await vscode.workspace
           .getConfiguration("codeFeedback")
@@ -709,16 +914,27 @@ async function handleAIError(aiError: AIError): Promise<void> {
       break;
 
     case AIErrorType.QUOTA_EXCEEDED:
+      let billingUrl = "";
+      switch (aiError.provider) {
+        case AIProvider.OPENAI:
+          billingUrl = "https://platform.openai.com/account/billing";
+          break;
+        case AIProvider.GEMINI:
+          billingUrl = "https://console.cloud.google.com/billing";
+          break;
+        case AIProvider.CLAUDE:
+          billingUrl = "https://console.anthropic.com/account/billing";
+          break;
+      }
+
       const quotaAction = await vscode.window.showErrorMessage(
         t.notifications.quota_exceeded_error,
         t.actions.check_billing,
         t.actions.disable_ai
       );
 
-      if (quotaAction === t.actions.check_billing) {
-        vscode.env.openExternal(
-          vscode.Uri.parse("https://platform.openai.com/account/billing")
-        );
+      if (quotaAction === t.actions.check_billing && billingUrl) {
+        vscode.env.openExternal(vscode.Uri.parse(billingUrl));
       } else if (quotaAction === t.actions.disable_ai) {
         await vscode.workspace
           .getConfiguration("codeFeedback")
@@ -751,7 +967,6 @@ async function handleAIError(aiError: AIError): Promise<void> {
 }
 
 // Kullanıcı dostu hata mesajı oluştur - karmaşık teknik detayları basitleştir
-// Bu fonksiyon, feedback panelinde gösterilecek daha kısa mesajlar için
 function getUserFriendlyErrorMessage(error: AIError): string {
   const t = getTranslations(); // Çeviri sistemini kullan
 
@@ -766,13 +981,17 @@ function getUserFriendlyErrorMessage(error: AIError): string {
       return t.errors.connection_issue;
     case AIErrorType.SERVICE_UNAVAILABLE:
       return t.errors.service_unavailable;
+    case AIErrorType.PROVIDER_NOT_CONFIGURED:
+      return t.errors.provider_config_missing;
     default:
       return t.errors.ai_unavailable;
   }
 }
 
-const aiSystemMessages: Record<string, string> = {
-  english: `You are an expert code mentor who provides brief, constructive feedback to help developers improve their coding skills. Always be encouraging and focus on learning opportunities. 
+// Enhanced system messages for different AI providers and languages
+const aiSystemMessages: Record<string, Record<AIProvider, string>> = {
+  english: {
+    [AIProvider.OPENAI]: `You are an expert code mentor who provides brief, constructive feedback to help developers improve their coding skills. Always be encouraging and focus on learning opportunities. 
 
 IMPORTANT: Respond in English with plain text only (no markdown formatting):
 - Keep responses under 150 characters
@@ -780,7 +999,25 @@ IMPORTANT: Respond in English with plain text only (no markdown formatting):
 - Be encouraging and educational
 - No special formatting, bullet points, or code blocks`,
 
-  espanol: `Eres un mentor experto en programación que proporciona retroalimentación breve y constructiva para ayudar a los desarrolladores a mejorar sus habilidades de codificación. Siempre sé alentador y enfócate en las oportunidades de aprendizaje.
+    [AIProvider.GEMINI]: `You are a helpful programming assistant providing brief, constructive code feedback. Be encouraging and educational.
+
+IMPORTANT: Respond in English with plain text only:
+- Maximum 150 characters
+- Simple, clear language
+- Encouraging and educational tone
+- No markdown, formatting, or code blocks`,
+
+    [AIProvider.CLAUDE]: `You are a knowledgeable code mentor providing brief, helpful feedback to developers. Focus on being encouraging and educational.
+
+IMPORTANT: Respond in English with plain text only:
+- Keep under 150 characters
+- Use clear, simple language
+- Be encouraging and educational
+- No formatting, bullet points, or code blocks`,
+  },
+
+  espanol: {
+    [AIProvider.OPENAI]: `Eres un mentor experto en programación que proporciona retroalimentación breve y constructiva para ayudar a los desarrolladores a mejorar sus habilidades de codificación. Siempre sé alentador y enfócate en las oportunidades de aprendizaje.
 
 IMPORTANTE: Responde en español con texto plano solamente (sin formato markdown):
 - Mantén las respuestas bajo 150 caracteres
@@ -788,13 +1025,48 @@ IMPORTANTE: Responde en español con texto plano solamente (sin formato markdown
 - Sé alentador y educativo
 - Sin formato especial, viñetas o bloques de código`,
 
-  turkce: `Geliştiricilerin kodlama becerilerini geliştirmelerine yardımcı olmak için kısa, yapıcı geri bildirim sağlayan uzman bir kod mentorsun. Her zaman cesaretlendirici ol ve öğrenme fırsatlarına odaklan.
+    [AIProvider.GEMINI]: `Eres un asistente de programación útil que proporciona retroalimentación breve y constructiva sobre código. Sé alentador y educativo.
+
+IMPORTANTE: Responde en español con texto plano solamente:
+- Máximo 150 caracteres
+- Lenguaje simple y claro
+- Tono alentador y educativo
+- Sin markdown, formato o bloques de código`,
+
+    [AIProvider.CLAUDE]: `Eres un mentor de código conocedor que proporciona retroalimentación breve y útil a los desarrolladores. Enfócate en ser alentador y educativo.
+
+IMPORTANTE: Responde en español con texto plano solamente:
+- Mantén bajo 150 caracteres
+- Usa lenguaje claro y simple
+- Sé alentador y educativo
+- Sin formato, viñetas o bloques de código`,
+  },
+
+  turkce: {
+    [AIProvider.OPENAI]: `Geliştiricilerin kodlama becerilerini geliştirmelerine yardımcı olmak için kısa, yapıcı geri bildirim sağlayan uzman bir kod mentorsun. Her zaman cesaretlendirici ol ve öğrenme fırsatlarına odaklan.
 
 ÖNEMLİ: Türkçe yanıt ver ve sadece düz metin kullan (markdown formatı yok):
 - Yanıtları 150 karakter altında tut
 - Açık ve basit dil kullan
 - Teşvik edici ve eğitici ol
 - Özel format, madde işareti veya kod bloğu yok`,
+
+    [AIProvider.GEMINI]: `Kod hakkında kısa, yapıcı geri bildirim sağlayan yardımcı bir programlama asistanısın. Cesaretlendirici ve eğitici ol.
+
+ÖNEMLİ: Türkçe yanıt ver ve sadece düz metin kullan:
+- Maksimum 150 karakter
+- Basit, açık dil
+- Cesaretlendirici ve eğitici ton
+- Markdown, format veya kod bloğu yok`,
+
+    [AIProvider.CLAUDE]: `Geliştiricilere kısa, faydalı geri bildirim sağlayan bilgili bir kod mentorsun. Cesaretlendirici ve eğitici olmaya odaklan.
+
+ÖNEMLİ: Türkçe yanıt ver ve sadece düz metin kullan:
+- 150 karakter altında tut
+- Açık, basit dil kullan
+- Cesaretlendirici ve eğitici ol
+- Format, madde işareti veya kod bloğu yok`,
+  },
 };
 
 function getLanguageSpecificPromptSuffix(): string {
@@ -818,6 +1090,238 @@ Lütfen yanıtını Türkçe olarak basit dil kullanarak ver. 150 karakter altı
   return suffixes[selectedLanguage] || suffixes.english;
 }
 
+// Enhanced AI calling function that routes to appropriate provider
+async function callAI(
+  prompt: string,
+  config: AIConfig
+): Promise<string | null> {
+  if (isAITemporarilyDisabled || !config.enabled) {
+    return null;
+  }
+
+  if (!isProviderConfigured(config)) {
+    const t = getTranslations();
+    const aiError: AIError = {
+      type: AIErrorType.PROVIDER_NOT_CONFIGURED,
+      message: t.errors.provider_config_missing,
+      provider: config.provider,
+      canRetry: false,
+    };
+    await handleAIError(aiError);
+    return null;
+  }
+
+  try {
+    console.log(`Making ${config.provider} API call...`);
+
+    let response: AIResponse | null = null;
+
+    switch (config.provider) {
+      case AIProvider.OPENAI:
+        response = await callOpenAI(prompt, config);
+        break;
+      case AIProvider.GEMINI:
+        response = await callGemini(prompt, config);
+        break;
+      case AIProvider.CLAUDE:
+        response = await callClaude(prompt, config);
+        break;
+      default:
+        throw new Error(`Unsupported AI provider: ${config.provider}`);
+    }
+
+    if (response) {
+      consecutiveErrors = 0;
+      return response.content;
+    }
+
+    return null;
+  } catch (error) {
+    console.error(`${config.provider} API call failed:`, error);
+    const aiError = categorizeAIError(error, undefined, config.provider);
+    await handleAIError(aiError);
+    return null;
+  }
+}
+
+// OpenAI API caller
+async function callOpenAI(
+  prompt: string,
+  config: AIConfig
+): Promise<AIResponse | null> {
+  const selectedLanguage = vscode.workspace
+    .getConfiguration("codeFeedback")
+    .get("language", "english") as string;
+  const systemMessage =
+    aiSystemMessages[selectedLanguage]?.[AIProvider.OPENAI] ||
+    aiSystemMessages.english[AIProvider.OPENAI];
+
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${config.openai.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: config.openai.model,
+      messages: [
+        {
+          role: "system",
+          content: systemMessage,
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      max_tokens: 150,
+      temperature: 0.7,
+    }),
+  });
+
+  if (!response.ok) {
+    const aiError = categorizeAIError(
+      new Error(`HTTP ${response.status}`),
+      response,
+      AIProvider.OPENAI
+    );
+    await handleAIError(aiError);
+    return null;
+  }
+
+  const data = await response.json();
+  const content = data.choices[0]?.message?.content?.trim();
+
+  return content
+    ? {
+        content,
+        usage: {
+          inputTokens: data.usage?.prompt_tokens,
+          outputTokens: data.usage?.completion_tokens,
+          totalTokens: data.usage?.total_tokens,
+        },
+      }
+    : null;
+}
+
+// Google Gemini API caller
+async function callGemini(
+  prompt: string,
+  config: AIConfig
+): Promise<AIResponse | null> {
+  const selectedLanguage = vscode.workspace
+    .getConfiguration("codeFeedback")
+    .get("language", "english") as string;
+  const systemMessage =
+    aiSystemMessages[selectedLanguage]?.[AIProvider.GEMINI] ||
+    aiSystemMessages.english[AIProvider.GEMINI];
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${config.gemini.model}:generateContent?key=${config.gemini.apiKey}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: `${systemMessage}\n\nUser: ${prompt}`,
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          maxOutputTokens: 150,
+          temperature: 0.7,
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const aiError = categorizeAIError(
+      new Error(`HTTP ${response.status}`),
+      response,
+      AIProvider.GEMINI
+    );
+    await handleAIError(aiError);
+    return null;
+  }
+
+  const data = await response.json();
+  const content = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+  return content
+    ? {
+        content,
+        usage: {
+          inputTokens: data.usageMetadata?.promptTokenCount,
+          outputTokens: data.usageMetadata?.candidatesTokenCount,
+          totalTokens: data.usageMetadata?.totalTokenCount,
+        },
+      }
+    : null;
+}
+
+// Anthropic Claude API caller
+async function callClaude(
+  prompt: string,
+  config: AIConfig
+): Promise<AIResponse | null> {
+  const selectedLanguage = vscode.workspace
+    .getConfiguration("codeFeedback")
+    .get("language", "english") as string;
+  const systemMessage =
+    aiSystemMessages[selectedLanguage]?.[AIProvider.CLAUDE] ||
+    aiSystemMessages.english[AIProvider.CLAUDE];
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": config.claude.apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: config.claude.model,
+      max_tokens: 150,
+      system: systemMessage,
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const aiError = categorizeAIError(
+      new Error(`HTTP ${response.status}`),
+      response,
+      AIProvider.CLAUDE
+    );
+    await handleAIError(aiError);
+    return null;
+  }
+
+  const data = await response.json();
+  const content = data.content?.[0]?.text?.trim();
+
+  return content
+    ? {
+        content,
+        usage: {
+          inputTokens: data.usage?.input_tokens,
+          outputTokens: data.usage?.output_tokens,
+        },
+      }
+    : null;
+}
+
 async function requestAICodeBlockAnalysis(
   selectedCode: string,
   selection: vscode.Selection,
@@ -826,10 +1330,12 @@ async function requestAICodeBlockAnalysis(
   const config = getAIConfig();
   const t = getTranslations();
 
-  if (!config.enabled || !config.apiKey || isAITemporarilyDisabled) {
-    if (!config.apiKey) {
-      addFeedback(`⚠️ ${t.errors.api_key_required}`, "error");
-    }
+  if (!config.enabled || isAITemporarilyDisabled) {
+    return;
+  }
+
+  if (!isProviderConfigured(config)) {
+    addFeedback(`⚠️ ${t.errors.provider_config_missing}`, "error");
     return;
   }
 
@@ -860,7 +1366,7 @@ Give brief feedback about this code block. Focus on:
 
 Keep response under 150 characters, plain text only.${languageSuffix}`;
 
-    const aiResponse = await callOpenAI(prompt, config);
+    const aiResponse = await callAI(prompt, config);
     if (aiResponse) {
       addFeedback(`🔍 Code Block: ${aiResponse}`, "ai");
     }
@@ -878,10 +1384,12 @@ async function requestAIContextAnalysis(
   const config = getAIConfig();
   const t = getTranslations();
 
-  if (!config.enabled || !config.apiKey || isAITemporarilyDisabled) {
-    if (!config.apiKey) {
-      addFeedback(`⚠️ ${t.errors.api_key_required}`, "error");
-    }
+  if (!config.enabled || isAITemporarilyDisabled) {
+    return;
+  }
+
+  if (!isProviderConfigured(config)) {
+    addFeedback(`⚠️ ${t.errors.provider_config_missing}`, "error");
     return;
   }
 
@@ -896,7 +1404,7 @@ ${context}
 
 Check for syntax errors or give one brief improvement tip. Keep response under 150 characters, plain text only.${languageSuffix}`;
 
-    const aiResponse = await callOpenAI(prompt, config);
+    const aiResponse = await callAI(prompt, config);
     if (aiResponse) {
       addFeedback(`${t.ui.ai_analysis_prefix} ${aiResponse}`, "ai");
     }
@@ -910,7 +1418,11 @@ async function requestAICodeAnalysis(document: vscode.TextDocument) {
   const config = getAIConfig();
   const t = getTranslations();
 
-  if (!config.enabled || !config.apiKey || isAITemporarilyDisabled) {
+  if (!config.enabled || isAITemporarilyDisabled) {
+    return;
+  }
+
+  if (!isProviderConfigured(config)) {
     return;
   }
 
@@ -934,81 +1446,12 @@ Give brief feedback focusing on:
 
 Keep response under 150 characters, plain text only.${languageSuffix}`;
 
-    const aiResponse = await callOpenAI(prompt, config);
+    const aiResponse = await callAI(prompt, config);
     if (aiResponse) {
       addFeedback(`${t.ui.ai_review_prefix} ${aiResponse}`, "ai");
     }
   } catch (error) {
     console.error("AI code analysis error:", error);
-  }
-}
-
-async function callOpenAI(
-  prompt: string,
-  config: AIConfig
-): Promise<string | null> {
-  if (isAITemporarilyDisabled) {
-    return null;
-  }
-
-  try {
-    console.log("Making OpenAI API call...");
-
-    // Seçilen dile göre sistem mesajını al
-    const selectedLanguage = vscode.workspace
-      .getConfiguration("codeFeedback")
-      .get("language", "english") as string;
-    const systemMessage =
-      aiSystemMessages[selectedLanguage] || aiSystemMessages.english;
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${config.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: config.model,
-        messages: [
-          {
-            role: "system",
-            content: systemMessage,
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        max_tokens: 150, // 120 karakter için yeterli token
-        temperature: 0.7,
-      }),
-    });
-
-    console.log("OpenAI API response status:", response.status);
-
-    if (response.ok) {
-      consecutiveErrors = 0;
-      const data = (await response.json()) as OpenAIResponse;
-      const result = data.choices[0]?.message?.content?.trim() || null;
-      console.log(
-        "OpenAI API success:",
-        result ? "Got response" : "Empty response"
-      );
-      return result;
-    } else {
-      console.log("OpenAI API error response:", await response.text());
-      const aiError = categorizeAIError(
-        new Error(`HTTP ${response.status}`),
-        response
-      );
-      await handleAIError(aiError);
-      return null;
-    }
-  } catch (error) {
-    console.error("OpenAI API call failed:", error);
-    const aiError = categorizeAIError(error);
-    await handleAIError(aiError);
-    return null;
   }
 }
 
@@ -1042,16 +1485,6 @@ function analyzeCurrentContext(
       ? trimmedLine.substring(0, 50) + "..."
       : trimmedLine;
   return interpolateString(t.cursor_analysis.generic, { context });
-}
-
-function getAIConfig(): AIConfig {
-  const config = vscode.workspace.getConfiguration("codeFeedback");
-
-  return {
-    apiKey: config.get("openai.apiKey", ""),
-    model: config.get("openai.model", "gpt-3.5-turbo"),
-    enabled: config.get("ai.enabled", true),
-  };
 }
 
 // Kod context'ini topla - AI'ya gönderilecek kod parçasını hazırla
@@ -1137,10 +1570,12 @@ function addFeedback(
   updateFeedbackPanel();
 }
 
-// Güncellenen updateFeedbackPanel fonksiyonu - markdown desteği ile
+// Güncellenen updateFeedbackPanel fonksiyonu - multi-provider support ile
 function updateFeedbackPanel() {
   if (feedbackPanel) {
     const t = getTranslations();
+    const config = getAIConfig();
+    const currentProvider = t.providers[config.provider] || config.provider;
 
     const feedbackHtml = feedbackList
       .map((feedback) => {
@@ -1255,11 +1690,27 @@ function updateFeedbackPanel() {
                         margin-bottom: 20px;
                         font-size: 16px;
                         font-weight: bold;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    }
+                    
+                    .provider-info {
+                        font-size: 12px;
+                        color: var(--vscode-descriptionForeground);
+                        font-weight: normal;
+                        background: var(--vscode-badge-background);
+                        color: var(--vscode-badge-foreground);
+                        padding: 2px 8px;
+                        border-radius: 12px;
                     }
                 </style>
             </head>
             <body>
-                <div class="panel-title">${t.ui.panel_title}</div>
+                <div class="panel-title">
+                    <span>${t.ui.panel_title}</span>
+                    <span class="provider-info">${currentProvider}</span>
+                </div>
                 <div class="feedback-container" id="feedbackContainer">${feedbackHtml}</div>
                 
                 <script>
