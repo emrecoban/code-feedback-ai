@@ -69,6 +69,45 @@ interface Translations {
   };
 }
 
+// AI API response interfaces
+interface OpenAIResponse {
+  choices: Array<{
+    message: {
+      content: string;
+    };
+  }>;
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+}
+
+interface GeminiResponse {
+  candidates: Array<{
+    content: {
+      parts: Array<{
+        text: string;
+      }>;
+    };
+  }>;
+  usageMetadata: {
+    promptTokenCount: number;
+    candidatesTokenCount: number;
+    totalTokenCount: number;
+  };
+}
+
+interface ClaudeResponse {
+  content: Array<{
+    text: string;
+  }>;
+  usage: {
+    input_tokens: number;
+    output_tokens: number;
+  };
+}
+
 // Tüm dillerin çevirileri - İngilizce key'ler ile organize edildi
 const translations: Record<string, Translations> = {
   english: {
@@ -1189,7 +1228,7 @@ async function callOpenAI(
     return null;
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as OpenAIResponse;
   const content = data.choices[0]?.message?.content?.trim();
 
   return content
@@ -1251,7 +1290,7 @@ async function callGemini(
     return null;
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as GeminiResponse;
   const content = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
 
   return content
@@ -1308,7 +1347,7 @@ async function callClaude(
     return null;
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as ClaudeResponse;
   const content = data.content?.[0]?.text?.trim();
 
   return content
